@@ -19,7 +19,7 @@ HELLO_EP = '/hello'
 HELLO_RESP = 'hello'
 JOURNAL_NAME_EP = '/journalname'
 JOURNAL_NAME_RESP = 'Journal Name'
-JOURNAL_NAME = 'MyFallJournal2024'
+JOURNAL_NAME = 'team-asare'
 
 
 @api.route(JOURNAL_NAME_EP)
@@ -31,7 +31,7 @@ class JournalName(Resource):
     def get(self):
         """
         An endpoint made for 'Group Dev Env Working' assignment.
-        It just answers with "MyFallJournal2024"
+        It just answers with "team-asare"
         """
         return {JOURNAL_NAME_RESP: JOURNAL_NAME}
 
