@@ -13,11 +13,27 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
-
 ENDPOINT_EP = '/endpoints'
 ENDPOINT_RESP = 'Available endpoints'
 HELLO_EP = '/hello'
 HELLO_RESP = 'hello'
+JOURNAL_NAME_EP = '/journalname'
+JOURNAL_NAME_RESP = 'Journal Name'
+JOURNAL_NAME = 'MyFallJournal2024'
+
+
+@api.route(JOURNAL_NAME_EP)
+class JournalName(Resource):
+    """
+    The purpose of JournalName is to have a simple test to output
+    the journal name.
+    """
+    def get(self):
+        """
+        An endpoint made for 'Group Dev Env Working' assignment.
+        It just answers with "MyFallJournal2024"
+        """
+        return {JOURNAL_NAME_RESP: JOURNAL_NAME}
 
 
 @api.route(HELLO_EP)
@@ -42,7 +58,7 @@ class Endpoints(Resource):
     """
     def get(self):
         """
-        The `get()` method will return a list of available endpoints.
+        The `get()` method will return sorted a list of available endpoints.
         """
         endpoints = sorted(rule.rule for rule in api.app.url_map.iter_rules())
-        return {"Available endpoints": endpoints}
+        return {ENDPOINT_RESP: endpoints}
