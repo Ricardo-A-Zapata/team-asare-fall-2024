@@ -29,3 +29,14 @@ def test_journal_name():
     resp_json = resp.get_json()
     assert ep.JOURNAL_NAME_RESP in resp_json
     assert isinstance(resp_json[ep.JOURNAL_NAME_RESP], str)
+
+def test_create():
+    # Sample User For Test
+    test = {
+        "NAME": "test_user",
+        "EMAIL": "test@user.com",
+        "AFFILIATION": "Test Uni"
+    }
+    resp = TEST_CLIENT.put('/user/create', json=test)
+    assert resp.status_code == 200
+    assert resp.json['Message'] == 'User added!'

@@ -27,7 +27,8 @@ JOURNAL_NAME_EP = '/journalname'
 JOURNAL_NAME_RESP = 'Journal Name'
 JOURNAL_NAME = 'team-asare-fall-2024'
 
-USERS_EP = '/user'
+
+USERS_EP = '/user/create'
 USERS_RESP = 'Message'
 RETURN = 'return'
 
@@ -39,7 +40,7 @@ USER_CREATE_FLDS = api.model('AddNewUserEntry', {
 })
 
 
-@api.route(f'{USERS_EP}/create')
+@api.route(USERS_EP)
 class UserCreate(Resource):
     """
     Add a user to the journal db.
