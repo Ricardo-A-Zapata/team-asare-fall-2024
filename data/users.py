@@ -9,41 +9,34 @@ NAME = 'name'
 ROLES = 'roles'
 EMAIL = 'email'
 AFFILIATION = 'affiliation'
+TEST_EMAIL = 'ejc369@nyu.edu'
 
-user_dict = {
+
+users_dict = {
     TEST_EMAIL: {
         NAME: 'Eugene Callahan',
-        ROLES: [],
         AFFILIATION: "NYU",
         EMAIL: TEST_EMAIL,
     }
 }
 
 
-def get_users():
+def read():
     """
     Our contract:
         - No arguments.
         - Returns a dictionary of users keyed on user name (a str).
         - Each user name must be the key for a dictionary.
-        - That dictionary must at least include a LEVEL member that has an int
-        value.
     """
-    users = {
-        "Callahan": {
-            LEVEL: 0,
-        },
-        "Reddy": {
-            LEVEL: 1,
-        },
-    }
+    users = users_dict
     return users
 
 
 def create(name: str, email: str, affiliation: str):
-    if email in people_dict:
-        raise ValueError(f'Adding duplicate {email = }')
-    people_dict[email] = {Name: name, EMAIL: email, AFFILIATION: affiliation}
+    if email in users_dict:
+        raise ValueError(f'Adding duplicate {email=}')
+    users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
+    return email
 
 
 def main():

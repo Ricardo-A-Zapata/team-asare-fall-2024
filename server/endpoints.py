@@ -28,9 +28,7 @@ JOURNAL_NAME_RESP = 'Journal Name'
 JOURNAL_NAME = 'team-asare-fall-2024'
 
 USERS_EP = '/user'
-USERS_RESP = 'User'
-
-MESSAGE = 'Message'
+USERS_RESP = 'Message'
 RETURN = 'return'
 
 
@@ -59,10 +57,10 @@ class UserCreate(Resource):
             affiliation = request.json.get(usr.AFFILIATION)
             ret = usr.create(name, email, affiliation)
         except Exception as err:
-            raise wz.NotAcceptable(f'Count not add person: '
+            raise wz.NotAcceptable(f'Count not add user: '
                                    f'{err=}')
         return {
-            MESSAGE: 'Person added!',
+            USERS_RESP: 'User added!',
             RETURN: ret,
         }
 
