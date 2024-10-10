@@ -2,24 +2,69 @@
 This is the file containing all of the endpoints for our flask app.
 The endpoint called `endpoints` will return all available endpoints.
 """
-# from http import HTTPStatus
 
-from flask import Flask  # , request
-from flask_restx import Resource, Api  # Namespace, fields
+from http import HTTPStatus
+
+from flask import Flask, request  # , request
+from flask_restx import Resource, Api, fields  # Namespace, fields
 from flask_cors import CORS
 
-# import werkzeug.exceptions as wz
+import werkzeug.exceptions as wz
+
+import data.users as usr
 
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
+
 ENDPOINT_EP = '/endpoints'
 ENDPOINT_RESP = 'Available endpoints'
+
 HELLO_EP = '/hello'
 HELLO_RESP = 'hello'
+
 JOURNAL_NAME_EP = '/journalname'
 JOURNAL_NAME_RESP = 'Journal Name'
 JOURNAL_NAME = 'team-asare-fall-2024'
+
+USERS_EP = '/user'
+USERS_RESP = 'User'
+
+MESSAGE = 'Message'
+RETURN = 'return'
+
+
+USER_CREATE_FLDS = api.model('AddNewUserEntry', {
+    usr.NAME: fields.String,
+    usr.EMAIL: fields.String,
+    usr.AFFILIATION: fields.String
+})
+
+
+@api.route(f'{USERS_EP}/create')
+class UserCreate(Resource):
+    """
+    Add a user to the journal db.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_ACCEPTABLE, 'Not acceptable')
+    @api.expect(USER_CREATE_FLDS)
+    def put(self):
+        """
+        Add a user.
+        """
+        try:
+            name = request.json.get(usr.NAME)
+            email = request.json.get(usr.EMAIL)
+            affiliation = request.json.get(usr.AFFILIATION)
+            ret = usr.create(name, email, affiliation)
+        except Exception as err:
+            raise wz.NotAcceptable(f'Count not add person: '
+                                   f'{err=}')
+        return {
+            MESSAGE: 'Person added!',
+            RETURN: ret,
+        }
 
 
 @api.route(JOURNAL_NAME_EP)
