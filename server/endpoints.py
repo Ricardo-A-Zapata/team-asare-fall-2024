@@ -70,6 +70,7 @@ class UserCreate(Resource):
             RETURN: ret,
         }
 
+
 @api.route(f'{USER_DELETE_EP}/<_id>')
 class UserDelete(Resource):
     """
