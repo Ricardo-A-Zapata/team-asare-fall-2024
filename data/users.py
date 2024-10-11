@@ -38,15 +38,15 @@ def create(name: str, email: str, affiliation: str):
     users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
     return email
 
-def delete(username):
+def delete(_id):
     """
     deletes a user (username) from the dictionary of users, if found.
     returns the username that was deleted, or None if not found.
     """
     users = read()
-    if username in users:
-        del users[username]
-        return username
+    if _id in users:
+        del users[_id]
+        return _id
     else:
         return None
 

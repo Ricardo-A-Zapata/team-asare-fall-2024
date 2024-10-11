@@ -40,3 +40,16 @@ def test_create():
     resp = TEST_CLIENT.put('/user/create', json=test)
     assert resp.status_code == 200
     assert resp.json['Message'] == 'User added!'
+
+def test_delete():
+    user_id = 000  # test ID
+
+    # test deletion for existing user
+    resp = TEST_CLIENT.delete(f'/user/create/{user_id}')
+    assert resp.status_code == 200
+    assert resp.json['Message'] == 'User deleted!'
+
+    # test deletion for nonexistent user
+    resp = TEST_CLIENT.delete(f'/user/create/{user_id}')
+    assert resp.status_code == NOT_FOUND
+    assert 'No such user' in resp.json['Message']

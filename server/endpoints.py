@@ -65,6 +65,21 @@ class UserCreate(Resource):
             RETURN: ret,
         }
 
+@api.route(f'{USERS_EP}/<_id>')
+class UserDelete(Resource):
+    """
+    Delete a user.
+    """
+    @api.response(HTTPStatus.OK, 'Success.')
+    @api.response(HTTPStatus.NOT_FOUND, 'No such user.')
+    def delete(self, _id):
+        ret = usr.delete(_id)
+        print(f'{ret=}')
+        if ret is not None:
+            return {'Deleted': ret}
+        else:
+            raise wz.NotFound(f'No such user: {_id}')
+
 
 @api.route(JOURNAL_NAME_EP)
 class JournalName(Resource):
