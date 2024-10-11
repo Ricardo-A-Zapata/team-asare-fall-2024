@@ -32,6 +32,8 @@ USERS_EP = '/user/create'
 USERS_RESP = 'Message'
 RETURN = 'return'
 
+USER_READ_EP = '/user/read'
+USER_READ_RESP = 'Users'
 
 USER_CREATE_FLDS = api.model('AddNewUserEntry', {
     usr.NAME: fields.String,
@@ -63,6 +65,28 @@ class UserCreate(Resource):
         return {
             USERS_RESP: 'User added!',
             RETURN: ret,
+        }
+
+
+@api.route(USER_READ_EP)
+class UserRead(Resource):
+    """
+    Read users from the journal database.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'No users found')
+    def get(self):
+        """
+        Retrieve all users.
+        """
+        try:
+            users = usr.read()
+            if not users:
+                return {USER_READ_RESP: 'No users found'}
+        except Exception as err:
+            return {USER_READ_RESP: f'Error reading users: {err}'}
+        return {
+            USER_READ_RESP: users
         }
 
 
