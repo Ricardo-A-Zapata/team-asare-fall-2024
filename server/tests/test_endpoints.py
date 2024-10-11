@@ -59,7 +59,7 @@ def test_delete():
     # test deletion for existing user
     resp = TEST_CLIENT.delete(f'/user/create/{user_id}')
     assert resp.status_code == 200
-    assert resp.json['Message'] == 'User deleted!'
+    assert resp.json is not None, resp.json['Message'] == 'User deleted!'
 
     # test deletion for nonexistent user
     resp = TEST_CLIENT.delete(f'/user/create/{user_id}')
