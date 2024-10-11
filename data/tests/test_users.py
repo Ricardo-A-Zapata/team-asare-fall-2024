@@ -27,6 +27,19 @@ def test_create():
     assert ADD_EMAIL in users
 
 
+BEFORE_NAME = 'Joe Shmoe'
+AFTER_NAME = 'Shmoe Joe'
+def test_update():
+    usrs.create(BEFORE_NAME, ADD_EMAIL, 'NYU')
+    users = usrs.read()
+    assert ADD_EMAIL in users
+    assert BEFORE_NAME in users
+    assert AFTER_NAME not in users
+    usrs.update('AFTER_NAME', ADD_EMAIL, 'University')
+    assert BEFORE_NAME not in users
+    assert AFTER_NAME in users
+
+
 def test_delete():
     users = usrs.read()
     assert ADD_EMAIL in users

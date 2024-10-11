@@ -42,6 +42,15 @@ def test_create():
     assert resp.status_code == 200
     assert resp.json['Message'] == 'User added!'
 
+def test_update_users():
+    test_update = {"NAME": "test_name",
+	"EMAIL": "test@mail.com",
+	"AFFILIATION": "University,
+    }
+    resp = TEST_CLIENT.put('/user/update', json = test_update)
+    assert resp.status_code = 200
+    resp_json = resp.get_json()
+    assert ep.USER_UPDATE_RESP in resp_json
 
 def test_read_users():
     resp = TEST_CLIENT.get(ep.USER_READ_EP)

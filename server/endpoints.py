@@ -38,6 +38,9 @@ USER_READ_RESP = 'Users'
 USER_DELETE_EP = '/user/delete'
 USER_DELETE_RESP = 'Delete'
 
+USER_UPDATE_EP = '/user/update'
+USER_UPDATE_RESP = 'Updated'
+
 USER_CREATE_FLDS = api.model('AddNewUserEntry', {
     usr.NAME: fields.String,
     usr.EMAIL: fields.String,
@@ -70,6 +73,25 @@ class UserCreate(Resource):
             RETURN: ret,
         }
 
+@api.route(USER_UPDATE_EP)
+class UserCreate(Resource):
+    """
+    Update a user.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'User not found')
+    def put(self):
+        try:
+            email = request.json.get(usr.EMAIL)
+	    name = request.json.get(usr.NAME)
+            affiliation = request.json.get(usr.AFFILIATION)
+            ret = usr.update(name, email, affiliation)
+        except Exception as err:
+            raise wz.NotAcceptable(f'Could not update user: '
+                                   f'{err=}')
+        return {
+            USER_UPDATE_RESP: ret,
+        }
 
 @api.route(f'{USER_DELETE_EP}/<_id>')
 class UserDelete(Resource):

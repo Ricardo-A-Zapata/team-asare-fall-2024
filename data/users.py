@@ -38,6 +38,14 @@ def create(name: str, email: str, affiliation: str):
     users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
     return email
 
+
+def update(name: str, email: str, affiliation: str):
+    if email in users_dict:
+	users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
+    	return email
+    return None
+
+
 def delete(_id: str):
     """
     deletes a user (username) from the dictionary of users, if found.
