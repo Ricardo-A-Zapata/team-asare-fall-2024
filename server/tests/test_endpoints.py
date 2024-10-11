@@ -40,3 +40,12 @@ def test_create():
     resp = TEST_CLIENT.put('/user/create', json=test)
     assert resp.status_code == 200
     assert resp.json['Message'] == 'User added!'
+
+def test_read_users():
+    resp = TEST_CLIENT.get(ep.USER_READ_EP)
+    assert resp.status_code == 200
+    resp_json = resp.get_json()
+    assert ep.USER_READ_RESP in resp_json
+    assert isinstance(resp_json[ep.USER_READ_RESP], dict)
+    # Optionally, verify that the test user is in the response
+    assert ep.usr.TEST_EMAIL in resp_json[ep.USER_READ_RESP]
