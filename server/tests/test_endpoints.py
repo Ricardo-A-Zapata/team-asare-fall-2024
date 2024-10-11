@@ -45,11 +45,12 @@ def test_create():
 def test_update_users():
     test_update = {"NAME": "test_name",
 	"EMAIL": "test@mail.com",
-	"AFFILIATION": "University,
+	"AFFILIATION": "University",
     }
     resp = TEST_CLIENT.put('/user/update', json = test_update)
-    assert resp.status_code = 200
+    assert resp.status_code == 200
     resp_json = resp.get_json()
+    assert resp_json['Return'] == True
     assert ep.USER_UPDATE_RESP in resp_json
 
 def test_read_users():

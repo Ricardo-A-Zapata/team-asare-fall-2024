@@ -41,9 +41,9 @@ def create(name: str, email: str, affiliation: str):
 
 def update(name: str, email: str, affiliation: str):
     if email in users_dict:
-	users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
-    	return email
-    return None
+        users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
+        return True
+    return False
 
 
 def delete(_id: str):

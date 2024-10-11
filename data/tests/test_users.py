@@ -35,7 +35,7 @@ def test_update():
     assert ADD_EMAIL in users
     assert BEFORE_NAME in users
     assert AFTER_NAME not in users
-    usrs.update('AFTER_NAME', ADD_EMAIL, 'University')
+    usrs.update(AFTER_NAME, ADD_EMAIL, 'University')
     assert BEFORE_NAME not in users
     assert AFTER_NAME in users
 
