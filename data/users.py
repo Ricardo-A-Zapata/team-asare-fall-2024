@@ -38,6 +38,7 @@ def create(name: str, email: str, affiliation: str):
     users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
     return email
 
+
 def delete(username):
     """
     deletes a user (username) from the dictionary of users, if found.
@@ -49,7 +50,6 @@ def delete(username):
         return username
     else:
         return None
-
 
 
 def main():
