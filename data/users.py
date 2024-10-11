@@ -38,7 +38,7 @@ def create(name: str, email: str, affiliation: str):
     users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
     return email
 
-def delete(_id):
+def delete(_id: str):
     """
     deletes a user (username) from the dictionary of users, if found.
     returns the username that was deleted, or None if not found.

@@ -54,14 +54,14 @@ def test_read_users():
 
 
 def test_delete():
-    user_id = 000  # test ID
+    user_id = 'ejc369@nyu.edu'
 
     # test deletion for existing user
-    resp = TEST_CLIENT.delete(f'/user/create/{user_id}')
+    resp = TEST_CLIENT.delete(f'/user/delete/{user_id}')
     assert resp.status_code == 200
     assert resp.json['Message'] == 'User deleted!'
 
-    # test deletion for nonexistent user
-    resp = TEST_CLIENT.delete(f'/user/create/{user_id}')
+    # test deletion for nonexistent user after it was deleted
+    resp = TEST_CLIENT.delete(f'/user/delete/{user_id}')
     assert resp.status_code == NOT_FOUND
     assert 'No such user' in resp.json['Message']

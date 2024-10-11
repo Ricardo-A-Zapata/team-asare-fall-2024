@@ -35,6 +35,9 @@ RETURN = 'return'
 USER_READ_EP = '/user/read'
 USER_READ_RESP = 'Users'
 
+USER_DELETE_EP = '/user/delete'
+USER_DELETE_RESP = 'Delete'
+
 USER_CREATE_FLDS = api.model('AddNewUserEntry', {
     usr.NAME: fields.String,
     usr.EMAIL: fields.String,
@@ -67,7 +70,7 @@ class UserCreate(Resource):
             RETURN: ret,
         }
 
-@api.route(f'{USERS_EP}/<_id>')
+@api.route(f'{USER_DELETE_EP}/<_id>')
 class UserDelete(Resource):
     """
     Delete a user.
@@ -78,11 +81,12 @@ class UserDelete(Resource):
         try:
             # delete the user
             ret = usr.delete(_id)
-            
-            if ret is not None:
-                return {'Deleted': ret}
         except Exception as err:
             raise wz.NotFound(f'No such user: {_id}' f'{err=}')
+        return {
+            USER_DELETE_RESP: 'success',
+            RETURN: ret,
+        }
 
 @api.route(USER_READ_EP)
 class UserRead(Resource):
