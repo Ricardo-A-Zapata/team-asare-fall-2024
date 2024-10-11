@@ -88,6 +88,7 @@ class UserDelete(Resource):
             RETURN: ret,
         }
 
+
 @api.route(USER_READ_EP)
 class UserRead(Resource):
     """
