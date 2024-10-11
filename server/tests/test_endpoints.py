@@ -30,6 +30,7 @@ def test_journal_name():
     assert ep.JOURNAL_NAME_RESP in resp_json
     assert isinstance(resp_json[ep.JOURNAL_NAME_RESP], str)
 
+
 def test_create():
     # Sample User For Test
     test = {
@@ -40,6 +41,8 @@ def test_create():
     resp = TEST_CLIENT.put('/user/create', json=test)
     assert resp.status_code == 200
     assert resp.json['Message'] == 'User added!'
+
+
 def test_read_users():
     resp = TEST_CLIENT.get(ep.USER_READ_EP)
     assert resp.status_code == 200
@@ -48,6 +51,7 @@ def test_read_users():
     assert isinstance(resp_json[ep.USER_READ_RESP], dict)
     # Optionally, verify that the test user is in the response
     assert ep.usr.TEST_EMAIL in resp_json[ep.USER_READ_RESP]
+
 
 def test_delete():
     user_id = 000  # test ID
