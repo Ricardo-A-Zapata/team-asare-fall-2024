@@ -75,13 +75,14 @@ class UserDelete(Resource):
     @api.response(HTTPStatus.OK, 'Success.')
     @api.response(HTTPStatus.NOT_FOUND, 'No such user.')
     def delete(self, _id):
-        ret = usr.delete(_id)
-        print(f'{ret=}')
-        if ret is not None:
-            return {'Deleted': ret}
-        else:
-            raise wz.NotFound(f'No such user: {_id}')
-
+        try:
+            # delete the user
+            ret = usr.delete(_id)
+            
+            if ret is not None:
+                return {'Deleted': ret}
+        except Exception as err:
+            raise wz.NotFound(f'No such user: {_id}' f'{err=}')
 
 @api.route(USER_READ_EP)
 class UserRead(Resource):

@@ -27,6 +27,14 @@ def test_create():
     assert ADD_EMAIL in users
 
 
+def test_delete():
+    users = usrs.read()
+    assert ADD_EMAIL in users
+    usrs.delete(ADD_EMAIL)
+    users = usrs.read()
+    assert ADD_EMAIL not in users
+
+
 def test_create_duplicate():
     with pytest.raises(ValueError):
         usrs.create('Do not care about name', usrs.TEST_EMAIL, 'Or affiliation')
