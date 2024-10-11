@@ -67,6 +67,7 @@ class UserCreate(Resource):
             RETURN: ret,
         }
 
+
 @api.route(f'{USERS_EP}/<_id>')
 class UserDelete(Resource):
     """
@@ -78,11 +79,11 @@ class UserDelete(Resource):
         try:
             # delete the user
             ret = usr.delete(_id)
-            
             if ret is not None:
                 return {'Deleted': ret}
         except Exception as err:
             raise wz.NotFound(f'No such user: {_id}' f'{err=}')
+
 
 @api.route(USER_READ_EP)
 class UserRead(Resource):
