@@ -50,7 +50,7 @@ def test_update_users():
     resp = TEST_CLIENT.put(ep.USER_UPDATE_EP, json = test_update)
     assert resp.status_code == OK
     resp_json = resp.get_json()
-    # assert resp_json[ep.USER_UPDATE_EP] == True
+    assert resp_json['return'] == True
     assert ep.USER_UPDATE_RESP in resp_json
 
 def test_read_users():
