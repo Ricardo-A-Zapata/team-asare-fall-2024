@@ -35,13 +35,21 @@ def read():
 def create(name: str, email: str, affiliation: str):
     if email in users_dict:
         raise ValueError(f'Adding duplicate {email=}')
-    users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
+    users_dict[email] = {
+                            NAME: name,
+                            EMAIL: email,
+                            AFFILIATION: affiliation,
+                         }
     return email
 
 
 def update(name: str, email: str, affiliation: str):
     if email in users_dict:
-        users_dict[email] = {NAME: name, EMAIL: email, AFFILIATION: affiliation}
+        users_dict[email] = {
+                                NAME: name,
+                                EMAIL: email,
+                                AFFILIATION: affiliation,
+                            }
         return True
     return False
 
@@ -55,8 +63,7 @@ def delete(_id: str):
     if _id in users:
         del users[_id]
         return _id
-    else:
-        return None
+    raise KeyError(f'ID "{_id} not found')
 
 
 def main():

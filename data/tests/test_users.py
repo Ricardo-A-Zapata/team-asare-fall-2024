@@ -27,17 +27,17 @@ def test_create():
     assert ADD_EMAIL in users
 
 
-BEFORE_NAME = 'Joe Shmoe'
-AFTER_NAME = 'Shmoe Joe'
+BEFORE_NAME = 'before name'
+AFTER_NAME = 'after name'
+UPDATE_EMAIL = 'update@test.com'
 def test_update():
-    usrs.create(BEFORE_NAME, ADD_EMAIL, 'NYU')
+    usrs.create(BEFORE_NAME, UPDATE_EMAIL, 'NYU')
     users = usrs.read()
-    assert ADD_EMAIL in users
-    assert BEFORE_NAME in users
-    assert AFTER_NAME not in users
-    usrs.update(AFTER_NAME, ADD_EMAIL, 'University')
+    assert UPDATE_EMAIL in users
+    assert BEFORE_NAME == users[UPDATE_EMAIL][usrs.NAME]
+    usrs.update(AFTER_NAME, UPDATE_EMAIL, 'University')
     assert BEFORE_NAME not in users
-    assert AFTER_NAME in users
+    assert AFTER_NAME  == users[UPDATE_EMAIL][usrs.NAME]
 
 
 def test_delete():

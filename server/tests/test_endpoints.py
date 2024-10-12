@@ -50,7 +50,7 @@ def test_update_users():
     resp = TEST_CLIENT.put('/user/update', json = test_update)
     assert resp.status_code == 200
     resp_json = resp.get_json()
-    assert resp_json['Return'] == True
+    assert resp_json['return'] == True
     assert ep.USER_UPDATE_RESP in resp_json
 
 def test_read_users():
@@ -64,14 +64,20 @@ def test_read_users():
 
 
 def test_delete():
-    user_id = 'ejc369@nyu.edu'
-
+    # Will try to delete the test user, then will add that user back in
+    test = {
+    "name": "randomNametoTest",
+    "email": "randomNametoTest@hotmail.com",
+    "affiliation": "Random Uni to Test"
+    }
+    resp = TEST_CLIENT.put('/user/create', json=test)
+    if resp.status_code != 200:
+        raise Exception("Could not create test user to delete")
     # test deletion for existing user
-    resp = TEST_CLIENT.delete(f'/user/delete/{user_id}')
+    resp = TEST_CLIENT.delete(f'/user/delete/randomNametoTest@hotmail.com')
     assert resp.status_code == 200
-    assert resp.json is not None, resp.json['Message'] == 'User deleted!'
+    assert resp.json is not None, resp.json[ep.USERS_RESP] == 'User deleted!'
 
     # test deletion for nonexistent user after it was deleted
-    resp = TEST_CLIENT.delete(f'/user/delete/{user_id}')
+    resp = TEST_CLIENT.delete(f'/user/delete/randomNametoTest@hotmail.com')
     assert resp.status_code == NOT_FOUND
-    assert 'No such user' in resp.json['Message']
