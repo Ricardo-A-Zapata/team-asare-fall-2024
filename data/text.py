@@ -73,7 +73,10 @@ def read_one(key: str) -> dict:
     This takes a key and returns the page dictionary
     for that key. Return an empty dictionary if key not found.
     """
-    return text_dict.get(key, {})
+    result = {}
+    if key in text_dict[key]:
+        result = text_dict[key]
+    return result
 
 
 def main():

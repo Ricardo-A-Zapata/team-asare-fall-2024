@@ -6,12 +6,16 @@ CREATE_KEY = "create"
 CREATE_TITLE = "createTitle"
 CREATE_TEXT = "createText"
 
+
 def test_read():
-    pass
+    texts = txt.read()
+    assert isinstance(texts, dict)
+    for key in texts:
+        assert isinstance(key, str)
 
 
 def test_read_one():
-    pass
+    assert len(txt.read_one(txt.TEST_KEY)) > 0
 
 
 def test_update():
