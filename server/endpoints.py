@@ -182,6 +182,12 @@ class Endpoints(Resource):
 TEXT_CREATE_EP = '/text/create'
 TEXT_CREATE_RESP = 'Text Created'
 
+TEXT_FIELDS = api.model('TextEntry', {
+    txt.KEY: fields.String,
+    txt.TITLE: fields.String,
+    txt.TEXT: fields.String,
+})
+
 
 @api.route(TEXT_CREATE_EP)
 class TextCreate(Resource):
