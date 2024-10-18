@@ -16,4 +16,13 @@ def test_update():
 
 
 def test_delete():
-    pass
+    # check if entry exists
+    entry = txt.DEL_KEY
+    assert entry in txt.text_dict
+
+    # delete entry
+    result = txt.delete(entry)
+
+    # return True if deleted successfully
+    assert result is True
+    assert entry not in txt.text_dict
