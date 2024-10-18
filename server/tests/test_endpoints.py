@@ -17,7 +17,11 @@ import server.endpoints as ep
 
 TEST_CLIENT = ep.app.test_client()
 
-
+TEST_CREATE_TEXT = {
+        "key": "test_key",
+        "title": "Test Title",
+        "text": "This is a test text."
+    }
 def test_hello():
     resp = TEST_CLIENT.get(ep.HELLO_EP)
     resp_json = resp.get_json()
@@ -83,16 +87,12 @@ def test_delete():
     assert resp.status_code == NOT_FOUND
 
 def test_create_text():
-    test_text = {
-        "key": "test_key",
-        "title": "Test Title",
-        "text": "This is a test text."
-    }
-    resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
+    resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=TEST_CREATE_TEXT)
     assert resp.status_code == OK
     assert resp.json[ep.TEXT_CREATE_RESP] == 'Text entry created!'
 
-    # First, create a text entry
-    test_text = {
-    }
-    TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
+
+def test_duplicate_text():
+    # Makes sure that we can't create duplicate text
+    resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=TEST_CREATE_TEXT)
+    assert resp.status_code == NOT_ACCEPTABLE
