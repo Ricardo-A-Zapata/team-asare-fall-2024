@@ -177,6 +177,8 @@ class Endpoints(Resource):
         """
         endpoints = sorted(rule.rule for rule in api.app.url_map.iter_rules())
         return {ENDPOINT_RESP: endpoints}
+
+
 TEXT_CREATE_EP = '/text/create'
 TEXT_CREATE_RESP = 'Text Created'
 
