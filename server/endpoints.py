@@ -182,6 +182,12 @@ class Endpoints(Resource):
 TEXT_CREATE_EP = '/text/create'
 TEXT_CREATE_RESP = 'Text Created'
 
+TEXT_UPDATE_EP = '/text/update'
+TEXT_UPDATE_RESP = 'Text Updated'
+
+TEXT_READ_EP = '/text/read'
+TEXT_READ_RESP = 'Content'
+
 TEXT_FIELDS = api.model('TextEntry', {
     txt.KEY: fields.String,
     txt.TITLE: fields.String,
@@ -214,11 +220,7 @@ class TextCreate(Resource):
         }
 
 
-TEXT_READ_EP = 'text/read'
-TEXT_READ_RESP = 'Content'
-
-
-@api.route(TEXT_READ_EP)
+@api.route(f'{TEXT_READ_EP}/<key>')
 class TextRead(Resource):
     @api.response(HTTPStatus.OK, 'Success')
     @api.response(HTTPStatus.NOT_FOUND, 'Text not found')
@@ -231,4 +233,29 @@ class TextRead(Resource):
             raise wz.NotFound(f'Error reading text: {err}')
         return {
             TEXT_READ_RESP: text_entry
+        }
+
+
+@api.route(TEXT_UPDATE_EP)
+class TextUpdate(Resource):
+    """
+    Update a text entry.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_ACCEPTABLE, 'Not acceptable')
+    @api.expect(TEXT_FIELDS)
+    def put(self):
+        """
+        Update a text entry.
+        """
+        try:
+            key = request.json.get(txt.KEY)
+            title = request.json.get(txt.TITLE)
+            text = request.json.get(txt.TEXT)
+            ret = txt.update(key, title, text)
+        except Exception as err:
+            raise wz.NotAcceptable(f'Could not update text entry: {err}')
+        return {
+            TEXT_UPDATE_RESP: 'Text entry updated successfully',
+            RETURN: ret
         }

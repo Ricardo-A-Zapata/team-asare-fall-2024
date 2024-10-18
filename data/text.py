@@ -74,7 +74,7 @@ def read_one(key: str) -> dict:
     for that key. Return an empty dictionary if key not found.
     """
     result = {}
-    if key in text_dict[key]:
+    if key in text_dict:
         result = text_dict[key]
     return result
 

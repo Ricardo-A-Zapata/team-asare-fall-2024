@@ -98,6 +98,10 @@ def test_duplicate_text():
     assert resp.status_code == NOT_ACCEPTABLE
 
 
+TEXT_READ_EP = '/text/read'
+TEXT_READ_RESP = 'Content'
+
+
 def test_read_text():
     test_text = {
         "key": "read_test_key",
@@ -111,3 +115,27 @@ def test_read_text():
     assert ep.TEXT_READ_RESP in resp_json
     assert resp_json[ep.TEXT_READ_RESP]['title'] == test_text['title']
     assert resp_json[ep.TEXT_READ_RESP]['text'] == test_text['text']
+
+
+def test_update_text():
+    test_text = {
+        "key": "update_test_key",
+        "title": "Update Test Title",
+        "text": "This is a test text for updating."
+    }
+    TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
+
+    updated_text = {
+        "key": "update_test_key",
+        "title": "Updated Title",
+        "text": "This text has been updated."
+    }
+    resp = TEST_CLIENT.put(ep.TEXT_UPDATE_EP, json=updated_text)
+    assert resp.status_code == OK
+    assert resp.json[ep.TEXT_UPDATE_RESP] == 'Text entry updated successfully'
+
+    resp = TEST_CLIENT.get(f'{ep.TEXT_READ_EP}/{updated_text["key"]}')
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert resp_json[ep.TEXT_READ_RESP]['title'] == updated_text['title']
+    assert resp_json[ep.TEXT_READ_RESP]['text'] == updated_text['text']
