@@ -218,21 +218,54 @@ class TextCreate(Resource):
             TEXT_CREATE_RESP: 'Text entry created!',
             RETURN: ret,
         }
+    
+
+TEXT_DELETE_EP = '/text/delete'
+TEXT_DELETE_RESP = 'Text Deleted'
 
 
-@api.route(f'{TEXT_READ_EP}/<key>')
-class TextRead(Resource):
+@api.route(f'{TEXT_DELETE_EP}/<string:key>')
+class TextDelete(Resource):
+    """
+    Delete a text entry.
+    """
     @api.response(HTTPStatus.OK, 'Success')
-    @api.response(HTTPStatus.NOT_FOUND, 'Text not found')
-    def get(self, key):
+    @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    def delete(self, key):
+        """
+        Delete a text entry by its key.
+        """
         try:
-            text_entry = txt.read_one(key)
-            if not text_entry:
-                raise wz.NotFound(f'No text found for key: {key}')
+            ret = txt.delete(key)
+            if not ret:
+                raise wz.NotFound(f'Text entry with key "{key}" not found.')
+        except Exception as err:
+            raise wz.NotFound(f'Could not delete text entry: {err}')
+        return {
+            TEXT_DELETE_RESP: 'Text entry deleted!',
+            RETURN: ret,
+        }
+
+
+@api.route(f'{TEXT_READ_EP}/<string:key>')
+class TextRead(Resource):
+    """
+    Read a text entry.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    def get(self, key):
+        """
+        Retrieve a text entry by key.
+        """
+        try:
+            txt_entry = txt.read_one(key)
+            if not txt_entry:
+                raise wz.NotFound(f'No text found for key:{key}')
         except Exception as err:
             raise wz.NotFound(f'Error reading text: {err}')
         return {
-            TEXT_READ_RESP: text_entry
+            TEXT_READ_RESP: txt_entry
         }
 
 

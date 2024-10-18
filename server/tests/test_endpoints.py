@@ -117,6 +117,23 @@ def test_read_text():
     assert resp_json[ep.TEXT_READ_RESP]['text'] == test_text['text']
 
 
+def test_delete_text():
+    # create text entry
+    test_text = {
+        "key": "delete_test_key",
+        "title": "Delete Test Title",
+        "text": "testing testing testing."
+    }
+    TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
+    # delete entry
+    resp = TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{test_text["key"]}')
+    assert resp.status_code == OK
+    assert resp.json[ep.TEXT_DELETE_RESP] == 'Text entry deleted successfully'
+
+    resp = TEST_CLIENT.get(f'{ep.TEXT_REAP_EP/nonexistent_key')
+    assert resp.status_code == NOT_FOUND
+
+
 def test_update_text():
     test_text = {
         "key": "update_test_key",
