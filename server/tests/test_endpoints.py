@@ -96,3 +96,16 @@ def test_duplicate_text():
     # Makes sure that we can't create duplicate text
     resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=TEST_CREATE_TEXT)
     assert resp.status_code == NOT_ACCEPTABLE
+
+def test_delete_text():
+    # create text entry
+    test_text = {
+        "key": "delete_test_key",
+        "title": "Delete Test Title",
+        "text": "testing testing testing."
+    }
+    TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
+    # delete entry
+    resp = TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{test_text["key"]}')
+    assert resp.status_code == OK
+    assert resp.json[ep.TEXT_DELETE_RESP] == 'Text entry deleted!'

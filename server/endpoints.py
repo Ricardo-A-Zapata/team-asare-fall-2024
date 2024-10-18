@@ -212,3 +212,30 @@ class TextCreate(Resource):
             TEXT_CREATE_RESP: 'Text entry created!',
             RETURN: ret,
         }
+    
+
+TEXT_DELETE_EP = '/text/delete'
+TEXT_DELETE_RESP = 'Text Deleted'
+
+
+@api.route(f'{TEXT_DELETE_EP}/<string:key>')
+class TextDelete(Resource):
+    """
+    Delete a text entry.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    def delete(self, key):
+        """
+        Delete a text entry by its key.
+        """
+        try:
+            ret = txt.delete(key)
+            if not ret:
+                raise wz.NotFound(f'Text entry with key "{key}" not found.')
+        except Exception as err:
+            raise wz.NotFound(f'Could not delete text entry: {err}')
+        return {
+            TEXT_DELETE_RESP: 'Text entry deleted!',
+            RETURN: ret,
+        }
