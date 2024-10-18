@@ -92,11 +92,7 @@ def test_create_text():
     assert resp.status_code == OK
     assert resp.json[ep.TEXT_CREATE_RESP] == 'Text entry created!'
 
-def test_read_text():
     # First, create a text entry
     test_text = {
-        "key": "read_test_key",
-        "title": "Read Test Title",
-        "text": "This is a test text for reading."
     }
     TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
