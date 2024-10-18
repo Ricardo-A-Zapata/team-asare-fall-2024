@@ -81,3 +81,22 @@ def test_delete():
     # test deletion for nonexistent user after it was deleted
     resp = TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
     assert resp.status_code == NOT_FOUND
+
+def test_create_text():
+    test_text = {
+        "key": "test_key",
+        "title": "Test Title",
+        "text": "This is a test text."
+    }
+    resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
+    assert resp.status_code == OK
+    assert resp.json[ep.TEXT_CREATE_RESP] == 'Text entry created!'
+
+def test_read_text():
+    # First, create a text entry
+    test_text = {
+        "key": "read_test_key",
+        "title": "Read Test Title",
+        "text": "This is a test text for reading."
+    }
+    TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
