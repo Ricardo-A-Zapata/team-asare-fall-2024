@@ -128,9 +128,9 @@ def test_delete_text():
     # delete entry
     resp = TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{test_text["key"]}')
     assert resp.status_code == OK
-    assert resp.json[ep.TEXT_DELETE_RESP] == 'Text entry deleted successfully'
+    assert resp.json[ep.TEXT_DELETE_RESP] == 'Text entry deleted!'
 
-    resp = TEST_CLIENT.get(f'{ep.TEXT_REAP_EP/nonexistent_key')
+    resp = TEST_CLIENT.get(f'{ep.TEXT_READ_EP}/nonexistent_key')
     assert resp.status_code == NOT_FOUND
 
 

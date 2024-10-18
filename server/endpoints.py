@@ -218,7 +218,7 @@ class TextCreate(Resource):
             TEXT_CREATE_RESP: 'Text entry created!',
             RETURN: ret,
         }
-    
+
 
 TEXT_DELETE_EP = '/text/delete'
 TEXT_DELETE_RESP = 'Text Deleted'
