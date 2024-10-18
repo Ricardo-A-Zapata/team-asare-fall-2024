@@ -12,6 +12,7 @@ from flask_cors import CORS
 import werkzeug.exceptions as wz
 
 import data.users as usr
+from data import text as txt
 
 app = Flask(__name__)
 CORS(app)
@@ -176,3 +177,28 @@ class Endpoints(Resource):
         """
         endpoints = sorted(rule.rule for rule in api.app.url_map.iter_rules())
         return {ENDPOINT_RESP: endpoints}
+TEXT_CREATE_EP = '/text/create'
+TEXT_CREATE_RESP = 'Text Created'
+@api.route(TEXT_CREATE_EP)
+class TextCreate(Resource):
+    """
+    Create a new text entry.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_ACCEPTABLE, 'Not acceptable')
+    @api.expect(TEXT_FIELDS)
+    def post(self):
+        """
+        Create a new text entry.
+        """
+        try:
+            key = request.json.get(txt.KEY)
+            title = request.json.get(txt.TITLE)
+            text = request.json.get(txt.TEXT)
+            ret = txt.create(key, title, text)
+        except Exception as err:
+            raise wz.NotAcceptable(f'Could not create text entry: {err}')
+        return {
+            TEXT_CREATE_RESP: 'Text entry created!',
+            RETURN: ret,
+        }
