@@ -156,3 +156,12 @@ def test_update_text():
     resp_json = resp.get_json()
     assert resp_json[ep.TEXT_READ_RESP]['title'] == updated_text['title']
     assert resp_json[ep.TEXT_READ_RESP]['text'] == updated_text['text']
+
+def test_update_nonexistent_text():
+    nonexistent_text = {
+        "key":"nonexistent_key",
+        "title":"Nonexistent Title",
+        "text":"This text doesn't exist."
+    }
+    resp = TEST_CLIENT.put(ep.TEXT_UPDATE_EP, json=nonexistent_text)
+    assert resp.status_code == NOT_ACCEPTABLE

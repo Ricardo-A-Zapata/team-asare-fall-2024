@@ -285,6 +285,8 @@ class TextUpdate(Resource):
             key = request.json.get(txt.KEY)
             title = request.json.get(txt.TITLE)
             text = request.json.get(txt.TEXT)
+            if key not in txt.text_dict:
+                raise wz.NotAcceptable(f'No text found for key: {key}')
             ret = txt.update(key, title, text)
         except Exception as err:
             raise wz.NotAcceptable(f'Could not update text entry: {err}')
