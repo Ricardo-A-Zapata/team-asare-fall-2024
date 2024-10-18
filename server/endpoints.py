@@ -179,6 +179,8 @@ class Endpoints(Resource):
         return {ENDPOINT_RESP: endpoints}
 TEXT_CREATE_EP = '/text/create'
 TEXT_CREATE_RESP = 'Text Created'
+
+
 @api.route(TEXT_CREATE_EP)
 class TextCreate(Resource):
     """
