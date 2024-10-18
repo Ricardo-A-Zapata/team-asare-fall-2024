@@ -212,3 +212,23 @@ class TextCreate(Resource):
             TEXT_CREATE_RESP: 'Text entry created!',
             RETURN: ret,
         }
+
+
+TEXT_READ_EP = 'text/read'
+TEXT_READ_RESP = 'Content'
+
+
+@api.route(TEXT_READ_EP)
+class TextRead(Resource):
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Text not found')
+    def get(self, key):
+        try:
+            text_entry = txt.read_one(key)
+            if not text_entry:
+                raise wz.NotFound(f'No text found for key: {key}')
+        except Exception as err:
+            raise wz.NotFound(f'Error reading text: {err}')
+        return {
+            TEXT_READ_RESP: text_entry
+        }
