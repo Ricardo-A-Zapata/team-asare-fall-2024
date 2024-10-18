@@ -33,7 +33,7 @@ def create(key: str, title: str, text: str) -> bool:
     Create a new text entry.
     """
     if key in text_dict:
-        return False
+        raise KeyError(f'{key} already exists in journal text')
     text_dict[key] = {TITLE: title, TEXT: text}
     return True
 
