@@ -168,10 +168,31 @@ def test_update_nonexistent_text():
     assert resp.status_code == NOT_ACCEPTABLE
 
 def test_read_all_roles():
-    resp = TEST_CLIENT.get(ep.ROLES_READ_EP)
+    resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
     assert resp.status_code == OK
     resp_json = resp.get_json()
-    assert ep.ROLES_READ_RESP in resp_json
-    assert isinstance(resp_json[ep.ROLES_READ_RESP], dict)
+    assert ep.ROLE_READ_RESP in resp_json
+    assert isinstance(resp_json[ep.ROLE_READ_RESP], dict)
     # Optionally, verify that the test role is in the response
-    assert ep.rls.TEST_CODE in resp_json[ep.ROLES_READ_RESP]
+    assert ep.rls.TEST_CODE in resp_json[ep.ROLE_READ_RESP]
+
+def test_create_role():
+    test_role = {
+        "code": "TR",
+        "role": "Test Role"
+    }
+    resp = TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
+    assert resp.status_code == OK
+    assert resp.json[ep.ROLE_CREATE_RESP] == 'Role created!'
+
+def test_read_roles():
+    resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
+    assert resp.status_code == OK
+    assert ep.ROLE_READ_RESP in resp.json
+    assert isinstance(resp.json[ep.ROLE_READ_RESP], dict)
+
+def test_read_one_role():
+    resp = TEST_CLIENT.get(f'{ep.ROLE_READ_EP}/TR')
+    assert resp.status_code == OK
+    assert ep.ROLE_READ_RESP in resp.json
+    assert isinstance(resp.json[ep.ROLE_READ_RESP], str)

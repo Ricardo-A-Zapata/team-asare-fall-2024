@@ -22,10 +22,7 @@ def create(code: str, role: str) -> bool:
     return True
 
 
-def read() -> dict:
-    """
-    Read all roles.
-    """
+def get_roles() -> dict:
     return ROLES
 
 
