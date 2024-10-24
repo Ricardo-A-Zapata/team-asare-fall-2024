@@ -280,8 +280,6 @@ class TextRead(Resource):
         }
 
 
-
-
 @api.route(TEXT_UPDATE_EP)
 class TextUpdate(Resource):
     """
@@ -354,5 +352,4 @@ class RoleReadOne(Resource):
             return {ROLE_READ_RESP: role}
         except Exception as e:
             raise wz.NotFound(f'Error reading role: {str(e)}')
-
 
