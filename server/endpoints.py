@@ -49,6 +49,8 @@ ROLE_READ_RESP = 'Roles'
 ROLE_CREATE_EP = '/role/create'
 ROLE_CREATE_RESP = 'Role Created'
 
+
+# Add this model if not already present
 ROLE_FIELDS = api.model('RoleFields', {
     'code': fields.String,
     'role': fields.String
@@ -352,4 +354,3 @@ class RoleReadOne(Resource):
             return {ROLE_READ_RESP: role}
         except Exception as e:
             raise wz.NotFound(f'Error reading role: {str(e)}')
-
