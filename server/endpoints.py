@@ -328,6 +328,7 @@ class RoleRead(Resource):
             ROLES_READ_RESP: roles
         }
 
+
 @api.route(ROLE_CREATE_EP)
 class RoleCreate(Resource):
     @api.expect(ROLE_FIELDS)
