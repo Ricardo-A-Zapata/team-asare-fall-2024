@@ -45,7 +45,8 @@ USER_UPDATE_RESP = 'Status'
 USER_CREATE_FLDS = api.model('AddNewUserEntry', {
     usr.NAME: fields.String,
     usr.EMAIL: fields.String,
-    usr.AFFILIATION: fields.String
+    usr.AFFILIATION: fields.String, 
+    usr.ROLES: fields.String,
 })
 
 
@@ -65,7 +66,8 @@ class UserCreate(Resource):
             name = request.json.get(usr.NAME)
             email = request.json.get(usr.EMAIL)
             affiliation = request.json.get(usr.AFFILIATION)
-            ret = usr.create(name, email, affiliation)
+            roles = request.json.get(usr.ROLES)
+            ret = usr.create(name, affiliation, email, roles)
         except Exception as err:
             raise wz.NotAcceptable(f'Count not add user: '
                                    f'{err=}')

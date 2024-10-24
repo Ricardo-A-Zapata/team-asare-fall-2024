@@ -4,6 +4,7 @@ This module interfaces to our user data.
 
 LEVEL = 'level'
 MIN_USER_NAME_LEN = 2
+import data.roles as rls
 # fields
 NAME = 'name'
 ROLES = 'roles'
@@ -30,7 +31,18 @@ def read():
     """
     users = users_dict
     return users
+def is_valid_email(email: str) -> bool:
+    # TODO: Yush will implement regex for this function
+    return True
 
+def is_valid_user(name: str, email:str, affiliation: str, role: str):
+    if email in users_dict:
+        raise ValueError(f'Adding duplicate {email=}')
+    if not is_valid_email(email):
+        raise ValueError(f'Invalid email: {email}')
+    if not rls.is_valid(role):
+        raise ValueError(f'Invalid role: {role}')
+    return True
 
 def create(name: str, email: str, affiliation: str):
     if email in users_dict:
