@@ -40,7 +40,8 @@ def test_create():
     test = {
         "name": "test_user",
         "email": "test@user.com",
-        "affiliation": "Test Uni"
+        "affiliation": "Test Uni",
+        "role": ep.rls.TEST_CODE,
     }
     resp = TEST_CLIENT.put(ep.USERS_EP, json=test)
     assert resp.status_code == OK
@@ -72,7 +73,7 @@ def test_delete():
     test = {
     "name": "randomNametoTest",
     "email": "randomNametoTest@hotmail.com",
-    "affiliation": "Random Uni to Test"
+    "affiliation": "Random Uni to Test",
     }
     resp = TEST_CLIENT.put(ep.USERS_EP, json=test)
     if resp.status_code != OK:
@@ -165,3 +166,12 @@ def test_update_nonexistent_text():
     }
     resp = TEST_CLIENT.put(ep.TEXT_UPDATE_EP, json=nonexistent_text)
     assert resp.status_code == NOT_ACCEPTABLE
+
+def test_read_all_roles():
+    resp = TEST_CLIENT.get(ep.ROLES_READ_EP)
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.ROLES_READ_RESP in resp_json
+    assert isinstance(resp_json[ep.ROLES_READ_RESP], dict)
+    # Optionally, verify that the test role is in the response
+    assert ep.rls.TEST_CODE in resp_json[ep.ROLES_READ_RESP]

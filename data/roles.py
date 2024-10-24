@@ -4,6 +4,7 @@ This module manages person roles for a journal.
 AUTHOR_CODE = 'AU'
 EDITOR_CODE = 'ED'
 REFEREE_CODE = 'RE'
+TEST_CODE = AUTHOR_CODE
 ROLES = {
     AUTHOR_CODE: 'Author',
     EDITOR_CODE: 'Editor',

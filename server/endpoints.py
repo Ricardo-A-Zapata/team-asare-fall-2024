@@ -13,6 +13,7 @@ import werkzeug.exceptions as wz
 
 import data.users as usr
 from data import text as txt
+import data.roles as rls
 
 app = Flask(__name__)
 CORS(app)
@@ -42,11 +43,13 @@ USER_DELETE_RESP = 'Delete'
 USER_UPDATE_EP = '/user/update'
 USER_UPDATE_RESP = 'Status'
 
+ROLES_READ_EP = '/roles/read'
+ROLES_READ_RESP = 'Roles'
+
 USER_CREATE_FLDS = api.model('AddNewUserEntry', {
     usr.NAME: fields.String,
     usr.EMAIL: fields.String,
     usr.AFFILIATION: fields.String,
-    # usr.ROLES: fields.String,
 })
 
 
@@ -66,7 +69,6 @@ class UserCreate(Resource):
             name = request.json.get(usr.NAME)
             email = request.json.get(usr.EMAIL)
             affiliation = request.json.get(usr.AFFILIATION)
-            # roles = request.json.get(usr.ROLES)
             ret = usr.create(name, email, affiliation)
         except Exception as err:
             raise wz.NotAcceptable(f'Count not add user: '
@@ -295,4 +297,26 @@ class TextUpdate(Resource):
         return {
             TEXT_UPDATE_RESP: 'Text entry updated successfully',
             RETURN: ret
+        }
+
+
+@api.route(ROLES_READ_EP)
+class RolesRead(Resource):
+    """
+    Read users from the journal database.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'No users found')
+    def get(self):
+        """
+        Retrieve all users.
+        """
+        try:
+            roles = rls.get_roles()
+            if not roles:
+                return {ROLES_READ_RESP: 'No Roles found'}
+        except Exception as err:
+            return {ROLES_READ_RESP: f'Error reading roles: {err}'}
+        return {
+            ROLES_READ_RESP: roles
         }

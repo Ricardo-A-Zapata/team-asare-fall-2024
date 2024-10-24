@@ -34,8 +34,8 @@ def read():
 
 
 def is_valid_email(email: str) -> bool:
-    return True
     # TODO: Yush will implement regex for this function
+    return True
 
 
 def is_valid_user(name: str, email: str, affiliation: str, role: str):
