@@ -43,7 +43,6 @@ USER_DELETE_RESP = 'Delete'
 USER_UPDATE_EP = '/user/update'
 USER_UPDATE_RESP = 'Status'
 
-ROLES_READ_EP = '/roles/read'
 ROLE_READ_EP = '/role/read'
 ROLES_READ_RESP = 'Roles'
 
