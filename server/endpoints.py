@@ -44,8 +44,16 @@ USER_UPDATE_EP = '/user/update'
 USER_UPDATE_RESP = 'Status'
 
 ROLES_READ_EP = '/roles/read'
+ROLE_READ_EP = '/role/read'
 ROLES_READ_RESP = 'Roles'
 
+ROLE_CREATE_EP = '/role/create'
+ROLE_CREATE_RESP = 'Role Created'
+
+ROLE_FIELDS = api.model('RoleFields', {
+    'code': fields.String,
+    'role': fields.String
+})
 USER_CREATE_FLDS = api.model('AddNewUserEntry', {
     usr.NAME: fields.String,
     usr.EMAIL: fields.String,
@@ -302,6 +310,8 @@ class TextUpdate(Resource):
 
 @api.route(ROLES_READ_EP)
 class RolesRead(Resource):
+@api.route(ROLE_READ_EP)
+class RoleRead(Resource):
     """
     Read users from the journal database.
     """
@@ -320,3 +330,29 @@ class RolesRead(Resource):
         return {
             ROLES_READ_RESP: roles
         }
+
+@api.route(ROLE_CREATE_EP)
+class RoleCreate(Resource):
+    @api.expect(ROLE_FIELDS)
+    def post(self):
+        try:
+            code = request.json['code']
+            role = request.json['role']
+            ret = rls.create(code, role)
+            return {ROLE_CREATE_RESP: 'Role created!', RETURN: ret}
+        except Exception as e:
+            raise wz.NotAcceptable(f'Could not create role: {str(e)}')
+
+
+@api.route(f'{ROLE_READ_EP}/<string:code>')
+class RoleReadOne(Resource):
+    def get(self, code):
+        try:
+            role = rls.read_one(code)
+            if not role:
+                raise wz.NotFound(f'No role found for code: {code}')
+            return {ROLE_READ_RESP: role}
+        except Exception as e:
+            raise wz.NotFound(f'Error reading role: {str(e)}')
+
+

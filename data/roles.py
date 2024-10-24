@@ -12,8 +12,28 @@ ROLES = {
 }
 
 
-def get_roles() -> dict:
+def create(code: str, role: str) -> bool:
+    """
+    Create a new role.
+    """
+    if code in ROLES:
+        raise ValueError(f"Role with code '{code}' already exists.")
+    ROLES[code] = role
+    return True
+
+
+def read() -> dict:
+    """
+    Read all roles.
+    """
     return ROLES
+
+
+def read_one(code: str) -> str:
+    """
+    Read a specific role by code.
+    """
+    return ROLES.get(code)
 
 
 def is_valid(code: str) -> bool:
