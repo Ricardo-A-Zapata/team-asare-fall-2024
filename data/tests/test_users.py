@@ -56,6 +56,11 @@ def test_create_duplicate():
 NO_AT = 'badEmail.com'
 NO_LOCAL_NAME = '@gmail.com'
 NO_DOMAIN = 'badEmail@.com'
+CONSECUTIVE_PERIOD = 'bad..email@gmail.com'
+BEGIN_END_PERIOD = '.bademail.@gmail.com'
+ILLEGAL_CHARACTER = 'bad:;email@gmail.com'
+NO_PERIODS = 'bademail@gmailcom'
+SHORT_TLD = 'bademail@gmail.c'
 
 
 def test_email_no_at():
@@ -68,3 +73,23 @@ def test_email_no_local_name():
 
 def test_email_no_domain():
     assert not usrs.is_valid_email(NO_DOMAIN)
+
+
+def test_consecutive_period():
+    assert not usrs.is_valid_email(CONSECUTIVE_PERIOD)
+
+
+def test_begin_end_period():
+    assert not usrs.is_valid_email(BEGIN_END_PERIOD)
+
+
+def test_illegal_character():
+    assert not usrs.is_valid_email(ILLEGAL_CHARACTER)
+
+
+def test_no_periods():
+    assert not usrs.is_valid_email(NO_PERIODS)
+
+
+def test_short_domain():
+    assert not usrs.is_valid_email(SHORT_TLD)

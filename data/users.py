@@ -36,7 +36,16 @@ def read():
 
 
 def is_valid_email(email: str) -> bool:
-    return re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email)
+    """
+    Allows legal special characters in local name: !#$%&'*+/=?^_`{|}~
+    Allows periods in local name
+        -no consecutive periods
+        -no period at start or end
+    Top level domain name is at least two characters
+    """
+    return re.match(r"""(^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~]+
+                    (?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~]+)*
+                    @[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$)""", email)
 
 
 def is_valid_user(name: str, email: str, affiliation: str, role: str):
