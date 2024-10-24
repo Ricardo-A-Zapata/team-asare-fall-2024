@@ -9,7 +9,11 @@ ROLES = {
     EDITOR_CODE: 'Editor',
     REFEREE_CODE: 'Referee',
 }
+
+
 def get_roles() -> dict:
     return ROLES
+
+
 def is_valid(code: str) -> bool:
     return code in ROLES
