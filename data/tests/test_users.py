@@ -51,3 +51,20 @@ def test_delete():
 def test_create_duplicate():
     with pytest.raises(ValueError):
         usrs.create('Do not care about name', usrs.TEST_EMAIL, 'Or affiliation')
+
+
+NO_AT = 'badEmail.com'
+NO_LOCAL_NAME = '@gmail.com'
+NO_DOMAIN = 'badEmail@.com'
+
+
+def test_email_no_at():
+    assert not usrs.is_valid_email(NO_AT)
+
+
+def test_email_no_local_name():
+    assert not usrs.is_valid_email(NO_LOCAL_NAME)
+
+
+def test_email_no_domain():
+    assert not usrs.is_valid_email(NO_DOMAIN)

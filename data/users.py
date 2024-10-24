@@ -1,6 +1,8 @@
 """
 This module interfaces to our user data.
 """
+import re
+
 import data.roles as rls
 
 LEVEL = 'level'
@@ -34,8 +36,7 @@ def read():
 
 
 def is_valid_email(email: str) -> bool:
-    # TODO: Yush will implement regex for this function
-    return True
+    return re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", email)
 
 
 def is_valid_user(name: str, email: str, affiliation: str, role: str):
