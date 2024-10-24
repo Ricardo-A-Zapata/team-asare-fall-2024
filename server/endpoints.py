@@ -308,8 +308,6 @@ class TextUpdate(Resource):
         }
 
 
-@api.route(ROLES_READ_EP)
-class RolesRead(Resource):
 @api.route(ROLE_READ_EP)
 class RoleRead(Resource):
     """
