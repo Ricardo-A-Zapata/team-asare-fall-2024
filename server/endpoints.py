@@ -45,6 +45,7 @@ USER_UPDATE_RESP = 'Status'
 
 ROLE_READ_EP = '/role/read'
 ROLES_READ_RESP = 'Roles'
+ROLE_READ_RESP = 'Roles'
 
 ROLE_CREATE_EP = '/role/create'
 ROLE_CREATE_RESP = 'Role Created'
@@ -278,6 +279,8 @@ class TextRead(Resource):
         return {
             TEXT_READ_RESP: txt_entry
         }
+
+
 
 
 @api.route(TEXT_UPDATE_EP)
