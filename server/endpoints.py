@@ -44,7 +44,6 @@ USER_UPDATE_EP = '/user/update'
 USER_UPDATE_RESP = 'Status'
 
 ROLE_READ_EP = '/role/read'
-ROLES_READ_RESP = 'Roles'
 ROLE_READ_RESP = 'Roles'
 
 ROLE_CREATE_EP = '/role/create'
@@ -324,11 +323,11 @@ class RoleRead(Resource):
         try:
             roles = rls.get_roles()
             if not roles:
-                return {ROLES_READ_RESP: 'No Roles found'}
+                return {ROLE_READ_RESP: 'No Roles found'}
         except Exception as err:
-            return {ROLES_READ_RESP: f'Error reading roles: {err}'}
+            return {ROLE_READ_RESP: f'Error reading roles: {err}'}
         return {
-            ROLES_READ_RESP: roles
+            ROLE_READ_RESP: roles
         }
 
 
