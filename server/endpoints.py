@@ -52,6 +52,9 @@ ROLE_CREATE_RESP = 'Role Created'
 ROLE_UPDATE_EP = '/role/update'
 ROLE_UPDATE_RESP = 'Role Updated'
 
+ROLE_DELETE_EP = '/role/delete'
+ROLE_DELETE_RESP = 'Role Deleted'
+
 
 # Add this model if not already present
 ROLE_FIELDS = api.model('RoleFields', {
@@ -370,3 +373,15 @@ class RoleUpdate(Resource):
             return {ROLE_UPDATE_RESP: 'Role updated!', RETURN: ret}
         except Exception as e:
             raise wz.NotAcceptable(f'Could not update role: {str(e)}')
+
+
+@api.route(f'{ROLE_DELETE_EP}/<string:code>')
+class RoleDelete(Resource):
+    def delete(self, code):
+        try:
+            ret = rls.delete(code)
+            if not ret:
+                raise wz.NotFound(f'Role with code "{code}" not found.')
+            return {ROLE_DELETE_RESP: 'Role deleted!', RETURN: ret}
+        except Exception as e:
+            raise wz.NotFound(f'Could not delete role: {str(e)}')
