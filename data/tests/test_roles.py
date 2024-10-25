@@ -42,3 +42,13 @@ def test_update():
     result = rls.update(TEST_ROLE_CODE, updated_role)
     assert result is True
     assert rls.ROLES[TEST_ROLE_CODE] == updated_role
+
+
+def test_delete():
+    result = rls.delete(TEST_ROLE_CODE)
+    assert result is True
+    assert TEST_ROLE_CODE not in rls.ROLES
+
+
+def test_delete_nonexistent():
+    assert not rls.delete("NONEXISTENT")
