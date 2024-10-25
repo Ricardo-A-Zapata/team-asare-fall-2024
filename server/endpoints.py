@@ -49,6 +49,9 @@ ROLE_READ_RESP = 'Roles'
 ROLE_CREATE_EP = '/role/create'
 ROLE_CREATE_RESP = 'Role Created'
 
+ROLE_UPDATE_EP = '/role/update'
+ROLE_UPDATE_RESP = 'Role Updated'
+
 
 # Add this model if not already present
 ROLE_FIELDS = api.model('RoleFields', {
@@ -354,3 +357,16 @@ class RoleReadOne(Resource):
             return {ROLE_READ_RESP: role}
         except Exception as e:
             raise wz.NotFound(f'Error reading role: {str(e)}')
+
+
+@api.route(ROLE_UPDATE_EP)
+class RoleUpdate(Resource):
+    @api.expect(ROLE_FIELDS)
+    def put(self):
+        try:
+            code = request.json['code']
+            role = request.json['role']
+            ret = rls.update(code, role)
+            return {ROLE_UPDATE_RESP: 'Role updated!', RETURN: ret}
+        except Exception as e:
+            raise wz.NotAcceptable(f'Could not update role: {str(e)}')

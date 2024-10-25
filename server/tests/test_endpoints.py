@@ -196,3 +196,12 @@ def test_read_one_role():
     assert resp.status_code == OK
     assert ep.ROLE_READ_RESP in resp.json
     assert isinstance(resp.json[ep.ROLE_READ_RESP], str)
+    
+def test_update_role():
+    updated_role = {
+        "code": "TR",
+        "role": "Updated Test Role"
+    }
+    resp = TEST_CLIENT.put(ep.ROLE_UPDATE_EP, json=updated_role)
+    assert resp.status_code == OK
+    assert resp.json[ep.ROLE_UPDATE_RESP] == 'Role updated!'
