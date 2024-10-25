@@ -196,3 +196,12 @@ def test_read_one_role():
     assert resp.status_code == OK
     assert ep.ROLE_READ_RESP in resp.json
     assert isinstance(resp.json[ep.ROLE_READ_RESP], str)
+
+def test_delete_role():
+    resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/TR')
+    assert resp.status_code == OK
+    assert resp.json[ep.ROLE_DELETE_RESP] == 'Role deleted!'
+
+def test_delete_nonexisent_role():
+    resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/NONEXISTENT')
+    assert resp.status_code == NOT_FOUND

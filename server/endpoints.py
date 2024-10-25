@@ -49,6 +49,9 @@ ROLE_READ_RESP = 'Roles'
 ROLE_CREATE_EP = '/role/create'
 ROLE_CREATE_RESP = 'Role Created'
 
+ROLE_DELETE_EP = '/role/delete'
+ROLE_DELETE_RESP = 'Role Deleted'
+
 
 # Add this model if not already present
 ROLE_FIELDS = api.model('RoleFields', {
@@ -354,3 +357,15 @@ class RoleReadOne(Resource):
             return {ROLE_READ_RESP: role}
         except Exception as e:
             raise wz.NotFound(f'Error reading role: {str(e)}')
+
+
+@api.route(f'{ROLE_DELETE_EP}/<string:code>')
+class RoleDelete(Resource):
+    def delete(self, code):
+        try:
+            ret = rls.delete(code)
+            if not ret:
+                raise wz.NotFound(f'Role with code "{code}" not found.')
+            return {ROLE_DELETE_RESP: 'Role deleted!', RETURN: ret}
+        except Exception as e:
+            raise wz.NotFound(f'Could not delete role: {str(e)}')
