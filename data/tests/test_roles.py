@@ -36,3 +36,9 @@ def test_read_one():
     assert role == TEST_ROLE_NAME
     assert rls.read_one("INVALID_CODE") is None
 
+
+def test_update():
+    updated_role = "Updateed Test Role"
+    result = rls.update(TEST_ROLE_CODE, updated_role)
+    assert result is True
+    assert rls.ROLES[TEST_ROLE_CODE] == updated_role

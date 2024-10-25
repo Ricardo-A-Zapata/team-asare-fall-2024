@@ -35,3 +35,13 @@ def read_one(code: str) -> str:
 
 def is_valid(code: str) -> bool:
     return code in ROLES
+
+
+def update(code :str, new_role: str) -> bool:
+    """
+    update existing role
+    """
+    if code not in ROLES:
+        raise ValueError(f"Role with code '{code}' does not exist.")
+    ROLES[code] = new_role
+    return True
