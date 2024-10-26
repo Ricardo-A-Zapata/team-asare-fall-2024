@@ -43,9 +43,14 @@ def is_valid_email(email: str) -> bool:
         -no period at start or end
     Top level domain name is at least two characters
     """
-    return re.match(r"""(^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~]+
-                    (?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~]+)*
-                    @[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$)""", email)
+    return re.match(
+        r'^[a-zA-Z0-9!#$%&\'*+/=?^_`{|}~]+'
+        r'(?:\.[a-zA-Z0-9!#$%&\'*+/=?^_`{|}~]+)*'
+        r'@'
+        r'[a-zA-Z0-9-]+'
+        r'(?:\.[a-zA-Z0-9-]+)*'
+        r'\.[a-zA-Z]{2,}$',
+        email)
 
 
 def is_valid_user(name: str, email: str, affiliation: str, role: str):
