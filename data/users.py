@@ -18,6 +18,7 @@ TEST_EMAIL = 'ejc369@nyu.edu'
 users_dict = {
     TEST_EMAIL: {
         NAME: 'Eugene Callahan',
+        ROLES: [],
         AFFILIATION: "NYU",
         EMAIL: TEST_EMAIL,
     }
@@ -53,13 +54,19 @@ def is_valid_email(email: str) -> bool:
         email)
 
 
-def is_valid_user(name: str, email: str, affiliation: str, role: str):
+def is_valid_user(name: str, email: str, affiliation: str, role: str = None,
+                  roles: list = None) -> bool:
     if email in users_dict:
         raise ValueError(f'Adding duplicate {email=}')
     if not is_valid_email(email):
         raise ValueError(f'Invalid email: {email}')
-    if not rls.is_valid(role):
-        raise ValueError(f'Invalid role: {role}')
+    if role:
+        if not rls.is_valid(role):
+            raise ValueError(f'Invalid Role: {role}')
+    elif role:
+        for role in roles:
+            if not rls.is_valid(role):
+                raise ValueError(f'Invalid Role: {role}')
     return True
 
 

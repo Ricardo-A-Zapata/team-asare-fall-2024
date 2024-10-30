@@ -55,6 +55,8 @@ ROLE_UPDATE_RESP = 'Role Updated'
 ROLE_DELETE_EP = '/role/delete'
 ROLE_DELETE_RESP = 'Role Deleted'
 
+USER_GET_MASTHEAD = '/masthead/get'
+USER_GET_MASTHEAD_RESP = 'Masthead'
 
 # Add this model if not already present
 ROLE_FIELDS = api.model('RoleFields', {
@@ -385,3 +387,9 @@ class RoleDelete(Resource):
             return {ROLE_DELETE_RESP: 'Role deleted!', RETURN: ret}
         except Exception as e:
             raise wz.NotFound(f'Could not delete role: {str(e)}')
+
+
+@api.route(f'{USER_GET_MASTHEAD}/masthead')
+class Masthead(Resource):
+    def get(self):
+        return {USER_GET_MASTHEAD_RESP: usr.get_masthead()}

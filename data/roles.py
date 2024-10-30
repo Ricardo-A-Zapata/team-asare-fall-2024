@@ -1,6 +1,8 @@
 """
 This module manages person roles for a journal.
 """
+from copy import deepcopy
+
 AUTHOR_CODE = 'AU'
 EDITOR_CODE = 'ED'
 REFEREE_CODE = 'RE'
@@ -10,7 +12,7 @@ ROLES = {
     EDITOR_CODE: 'Editor',
     REFEREE_CODE: 'Referee',
 }
-MH_ROLES = [AUTHOR_CODE, EDITOR_CODE, REFEREE_CODE]
+MH_ROLES = [AUTHOR_CODE, EDITOR_CODE]
 
 
 def create(code: str, role: str) -> bool:
@@ -24,7 +26,7 @@ def create(code: str, role: str) -> bool:
 
 
 def get_roles() -> dict:
-    return ROLES
+    return deepcopy(ROLES)
 
 
 def get_masthead_roles() -> dict:
