@@ -97,8 +97,19 @@ def delete(_id: str):
     raise KeyError(f'ID "{_id} not found')
 
 
+def get_masthead() -> dict:
+    masthead = {}
+    mh_roles = rls.get_masthead_roles()
+    for mh_role, text in mh_roles.items():
+        user_w_role = {}
+        for user in read():
+            pass
+        masthead[text] = user_w_role
+    return masthead
+
+
 def main():
-    pass
+    print(get_masthead())
 
 
 if __name__ == '__main__':

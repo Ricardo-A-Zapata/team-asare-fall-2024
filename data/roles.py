@@ -10,6 +10,7 @@ ROLES = {
     EDITOR_CODE: 'Editor',
     REFEREE_CODE: 'Referee',
 }
+MH_ROLES = [AUTHOR_CODE, EDITOR_CODE, REFEREE_CODE]
 
 
 def create(code: str, role: str) -> bool:
@@ -24,6 +25,17 @@ def create(code: str, role: str) -> bool:
 
 def get_roles() -> dict:
     return ROLES
+
+
+def get_masthead_roles() -> dict:
+    mh_roles = get_roles()
+    del_mh_roles = []
+    for role in mh_roles:
+        if role not in MH_ROLES:
+            del_mh_roles.append(role)
+    for del_role in del_mh_roles:
+        del mh_roles[del_role]
+    return mh_roles
 
 
 def read_one(code: str) -> str:
