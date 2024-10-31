@@ -389,7 +389,7 @@ class RoleDelete(Resource):
             raise wz.NotFound(f'Could not delete role: {str(e)}')
 
 
-@api.route(f'{USER_GET_MASTHEAD}/masthead')
+@api.route(USER_GET_MASTHEAD)
 class Masthead(Resource):
     def get(self):
         return {USER_GET_MASTHEAD_RESP: usr.get_masthead()}
