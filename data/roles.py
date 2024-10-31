@@ -69,3 +69,10 @@ def delete(code: str) -> bool:
         return False
     del ROLES[code]
     return True
+
+
+def list_role_codes() -> list:
+    """
+    Return a list of all role codes.
+    """
+    return list(ROLES.keys())
