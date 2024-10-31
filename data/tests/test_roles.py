@@ -57,3 +57,12 @@ def test_delete():
 
 def test_delete_nonexistent():
     assert not rls.delete("NONEXISTENT")
+
+
+def test_list_role_codes():
+    role_codes = rls.list_role_codes()
+    assert isinstance(role_codes, list)
+    assert len(role_codes) > 0
+    for code in role_codes:
+        assert isinstance(code, str)
+        assert code in rls.ROLES
