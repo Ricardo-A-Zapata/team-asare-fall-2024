@@ -213,6 +213,14 @@ def test_update_role():
     resp = TEST_CLIENT.put(ep.ROLE_UPDATE_EP, json=updated_role)
     assert resp.status_code == OK
     assert resp.json[ep.ROLE_UPDATE_RESP] == 'Role updated!'
+
+def test_update_nonexistent_role():
+    updated_role = {
+        "code": "NE",
+        "role": "Nonexistent Test Role"
+    }
+    resp = TEST_CLIENT.put(ep.ROLE_UPDATE_EP, json=updated_role)
+    assert resp.status_code == NOT_ACCEPTABLE
     
 def test_delete_role():
     resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/TR')
