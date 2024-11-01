@@ -185,6 +185,14 @@ def test_create_role():
     assert resp.status_code == OK
     assert resp.json[ep.ROLE_CREATE_RESP] == 'Role created!'
 
+def test_create_duplicate_role():
+    test_role = {
+        "code": "TR",
+        "role": "Test Role"
+    }
+    resp = TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
+    assert resp.status_code == NOT_ACCEPTABLE
+
 def test_read_roles():
     resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
     assert resp.status_code == OK
