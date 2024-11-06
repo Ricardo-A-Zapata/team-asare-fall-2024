@@ -61,6 +61,9 @@ BEGIN_END_PERIOD = '.bademail.@gmail.com'
 ILLEGAL_CHARACTER = 'bad:;email@gmail.com'
 NO_PERIODS = 'bademail@gmailcom'
 SHORT_TLD = 'bademail@gmail.c'
+LONG_TLD = 'bademail@gmail.commmmmm'
+MIXED_CASE = 'Valid.Email@Example.COM'
+MIN_LENGTH = 'z@z.co'
 
 
 def test_email_no_at():
@@ -73,6 +76,14 @@ def test_email_no_local_name():
 
 def test_email_no_domain():
     assert not usrs.is_valid_email(NO_DOMAIN)
+
+
+def test_email_mixed_case():
+    assert usrs.is_valid_email(MIXED_CASE)
+
+
+def test_email_minimum_length():
+    assert usrs.is_valid_email(MIN_LENGTH)
 
 
 def test_consecutive_period():
@@ -93,3 +104,7 @@ def test_no_periods():
 
 def test_short_domain():
     assert not usrs.is_valid_email(SHORT_TLD)
+
+
+def test_long_domain():
+    assert not usrs.is_valid_email(LONG_TLD)
