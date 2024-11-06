@@ -185,6 +185,14 @@ def test_create_role():
     assert resp.status_code == OK
     assert resp.json[ep.ROLE_CREATE_RESP] == 'Role created!'
 
+def test_create_duplicate_role():
+    test_role = {
+        "code": "TR",
+        "role": "Test Role"
+    }
+    resp = TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
+    assert resp.status_code == NOT_ACCEPTABLE
+
 def test_read_roles():
     resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
     assert resp.status_code == OK
@@ -206,6 +214,14 @@ def test_update_role():
     assert resp.status_code == OK
     assert resp.json[ep.ROLE_UPDATE_RESP] == 'Role updated!'
 
+def test_update_nonexistent_role():
+    updated_role = {
+        "code": "NE",
+        "role": "Nonexistent Test Role"
+    }
+    resp = TEST_CLIENT.put(ep.ROLE_UPDATE_EP, json=updated_role)
+    assert resp.status_code == NOT_ACCEPTABLE
+    
 def test_delete_role():
     resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/TR')
     assert resp.status_code == OK
@@ -214,3 +230,9 @@ def test_delete_role():
 def test_delete_nonexisent_role():
     resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/NONEXISTENT')
     assert resp.status_code == NOT_FOUND
+
+def test_masthead():
+    resp = TEST_CLIENT.get(ep.USER_GET_MASTHEAD)
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.USER_GET_MASTHEAD_RESP in resp_json

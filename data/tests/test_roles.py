@@ -13,6 +13,11 @@ def test_get_roles():
         assert isinstance(role, str)
 
 
+def test_get_masthead_roles():
+    mh_roles = rls.get_masthead_roles()
+    assert isinstance(mh_roles, dict)
+    
+
 def test_is_valid():
     assert rls.is_valid(rls.TEST_CODE)
     assert not rls.is_valid("INVALID_CODE")
@@ -52,3 +57,12 @@ def test_delete():
 
 def test_delete_nonexistent():
     assert not rls.delete("NONEXISTENT")
+
+
+def test_list_role_codes():
+    role_codes = rls.list_role_codes()
+    assert isinstance(role_codes, list)
+    assert len(role_codes) > 0
+    for code in role_codes:
+        assert isinstance(code, str)
+        assert code in rls.ROLES
