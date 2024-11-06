@@ -43,10 +43,16 @@ def test_read_one():
 
 
 def test_update():
-    updated_role = "Updateed Test Role"
+    if rls.is_valid(TEST_ROLE_CODE):
+        rls.delete(TEST_ROLE_CODE)
+    rls.create(TEST_ROLE_CODE, TEST_ROLE_NAME)
+    updated_role = "Updated Role"
     result = rls.update(TEST_ROLE_CODE, updated_role)
     assert result is True
-    assert rls.ROLES[TEST_ROLE_CODE] == updated_role
+    assert rls.get_roles()[TEST_ROLE_CODE] == updated_role
+    other_roles = {code: name for code, name in rls.get_roles().items() if code != TEST_ROLE_CODE}
+    for code, name in other_roles.items():
+        assert name != updated_role  
 
 
 def test_delete():
@@ -66,3 +72,22 @@ def test_list_role_codes():
     for code in role_codes:
         assert isinstance(code, str)
         assert code in rls.ROLES
+
+
+def test_create_edge_cases():
+    short_code, short_name = "A", "Short"
+    assert rls.create(short_code, short_name)
+    assert short_code in rls.get_roles()
+    assert rls.get_roles()[short_code] == short_name
+
+    special_code, special_name = "R@#!$", "Special!@#"
+    assert rls.create(special_code, special_name)
+    assert special_code in rls.get_roles()
+    assert rls.get_roles()[special_code] == special_name
+
+    long_code, long_name = "L" * 100, "Long Name" * 20
+    assert rls.create(long_code, long_name)
+    assert long_code in rls.get_roles()
+    assert rls.get_roles()[long_code] == long_name
+
+
