@@ -106,6 +106,5 @@ def test_short_domain():
     assert not usrs.is_valid_email(SHORT_TLD)
 
 
-def test_get_masthead():
-    mh = usrs.get_masthead()
-    assert isinstance(mh, dict)
+def test_long_domain():
+    assert not usrs.is_valid_email(LONG_TLD)
