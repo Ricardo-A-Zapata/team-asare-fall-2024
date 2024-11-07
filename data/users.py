@@ -103,6 +103,12 @@ def delete(_id: str):
     raise KeyError(f'ID "{_id} not found')
 
 
+def has_role(user: dict, role: str) -> bool:
+    if role in rls.get_roles(ROLES):
+        return True
+    return False
+
+
 def get_masthead() -> dict:
     masthead = {}
     mh_roles = rls.get_masthead_roles()

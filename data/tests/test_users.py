@@ -108,3 +108,19 @@ def test_short_domain():
 
 def test_long_domain():
     assert not usrs.is_valid_email(LONG_TLD)
+
+
+TEMP_EMAIL = 'fake_user_email@gmail.com'
+TEMP_ROLE_CODE = 'Author'
+
+
+@pytest.fixture(scope='function')
+#def temp_user():
+#    _id = usrs.create('Billy Bob', 'NYU', TEMP_EMAIL, TEMP_ROLE_CODE)
+#    yield _id
+#    usrs.delete(_id)
+
+
+def test_has_roles(temp_user):
+    user_record = usrs.read_one(temp_user)
+    assert usrs.has_role(user_record, TEMP_ROLE_CODE)
