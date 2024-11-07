@@ -36,6 +36,10 @@ def read():
     return users
 
 
+def read_one(email: str):
+    return users_dict.get(email)
+
+
 VALID_CHARS = r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]"
 CHAR_OR_DIGIT = r"[A-Za-z0-9-]"
 
@@ -104,18 +108,31 @@ def delete(_id: str):
 
 
 def has_role(user: dict, role: str) -> bool:
-    if role in rls.get_roles(ROLES):
+    if role in user.get(ROLES):
         return True
     return False
+
+
+MH_FIELDS = [NAME, AFFILIATION]
+
+
+def create_mh_rec(person: dict) -> dict:
+    mh_rec = {}
+    for field in MH_FIELDS:
+        mh_rec[field] = person.get(field, '')
+    return mh_rec
 
 
 def get_masthead() -> dict:
     masthead = {}
     mh_roles = rls.get_masthead_roles()
     for mh_role, text in mh_roles.items():
-        user_w_role = {}
-        for user in read():
-            pass
+        user_w_role = []
+        users = read()
+        for _id, user in users.items():
+            if has_role(user, mh_role):
+                rec = create_mh_rec(user)
+                user_w_role.append(rec)
         masthead[text] = user_w_role
     return masthead
 
