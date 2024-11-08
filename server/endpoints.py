@@ -393,3 +393,45 @@ class RoleDelete(Resource):
 class Masthead(Resource):
     def get(self):
         return {USER_GET_MASTHEAD_RESP: usr.get_masthead()}
+
+
+USER_READ_SINGLE_EP = '/user/read_single'
+
+
+@api.route(f'{USER_READ_SINGLE_EP}/<string:email>')
+class UserReadSingle(Resource):
+    """
+    Read a single user from the journal database.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'User not found')
+    def get(self, email):
+        """
+        Retrieve a single user by email.
+        """
+        try:
+            user = usr.read_one(email)  # Using existing read_one function
+            if not user:
+                raise wz.NotFound(f'User with email {email} not found.')
+            return {USER_READ_RESP: user}
+        except Exception as err:
+            raise wz.NotFound(f'Error reading user: {err}')
+
+
+TEXT_READ_ALL_EP = '/text/read_all'
+
+
+@api.route(TEXT_READ_ALL_EP)
+class TextReadAll(Resource):
+    """
+    Read all text entries.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    def get(self):
+        """
+        Retrieve all text entries.
+        """
+        try:
+            return {TEXT_READ_RESP: txt.text_dict}
+        except Exception as err:
+            raise wz.ServiceUnavailable(f'Error reading texts: {err}')
