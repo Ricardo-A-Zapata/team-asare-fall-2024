@@ -12,7 +12,7 @@ from flask_cors import CORS
 import werkzeug.exceptions as wz
 
 import data.users as usr
-from data import text as txt
+import data.text as txt
 import data.roles as rls
 
 app = Flask(__name__)
@@ -28,7 +28,6 @@ HELLO_RESP = 'hello'
 JOURNAL_NAME_EP = '/journalname'
 JOURNAL_NAME_RESP = 'Journal Name'
 JOURNAL_NAME = 'team-asare-fall-2024'
-
 
 USERS_EP = '/user/create'
 USERS_RESP = 'Message'

@@ -73,13 +73,17 @@ def is_valid_user(name: str, email: str, affiliation: str, role: str = None,
     return True
 
 
-def create(name: str, email: str, affiliation: str):
+def create(name: str, email: str, affiliation: str, role: str = None):
     if email in users_dict:
         raise ValueError(f'Adding duplicate {email=}')
+    if role:
+        if not rls.is_valid(role):
+            raise ValueError(f'Invalid Role: {role}')
     users_dict[email] = {
                             NAME: name,
                             EMAIL: email,
                             AFFILIATION: affiliation,
+                            ROLES: [role] if role else []
                          }
     return email
 

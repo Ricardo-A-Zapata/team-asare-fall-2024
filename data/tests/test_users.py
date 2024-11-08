@@ -2,6 +2,8 @@ import pytest
 
 import data.users as usrs
 
+from data.users import NAME, ROLES
+
 
 def test_read():
     users = usrs.read()
@@ -17,14 +19,19 @@ def test_read():
 
 
 ADD_EMAIL = 'joe@nyu.edu'
+ADD_AFFILIATION = "NYU"
+VALID_ROLE = "AD"
+INVALID_ROLE = "InvalidRole"
 
 
 def test_create():
     users = usrs.read()
-    assert ADD_EMAIL not in users
-    usrs.create('Joe Shmoe', ADD_EMAIL, 'NYU')
+    assert ADD_EMAIL not in users, "User should not already exist before creation"
+    usrs.create(NAME, ADD_EMAIL, ADD_AFFILIATION, role="AU")
     users = usrs.read()
-    assert ADD_EMAIL in users
+    assert ADD_EMAIL in users, "User should exist after creation with role"
+    assert users[ADD_EMAIL]["roles"] == ["AU"], "User should have role 'AU' (Author) assigned"
+    usrs.delete(ADD_EMAIL)
 
 
 BEFORE_NAME = 'before name'
@@ -42,10 +49,13 @@ def test_update():
 
 def test_delete():
     users = usrs.read()
-    assert ADD_EMAIL in users
+    if ADD_EMAIL not in users:
+        usrs.create("John Doe", ADD_EMAIL, "NYU")
+    users = usrs.read()
+    assert ADD_EMAIL in users, "User should exist after creation"
     usrs.delete(ADD_EMAIL)
     users = usrs.read()
-    assert ADD_EMAIL not in users
+    assert ADD_EMAIL not in users, "User should not exist after deletion"
 
 
 def test_create_duplicate():
