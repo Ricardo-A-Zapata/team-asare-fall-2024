@@ -236,3 +236,75 @@ def test_masthead():
     #assert resp.status_code == OK
     resp_json = resp.get_json()
     #assert ep.USER_GET_MASTHEAD_RESP in resp_json
+
+def test_read_single_user():
+    """
+    Test retrieving a single user by email
+    """
+    # Clean up any existing test user first
+    test_email = "test@user.com"
+    TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test_email}')
+    
+    # Create test user
+    test = {
+        "name": "test_user",
+        "email": test_email,
+        "affiliation": "Test Uni",
+        "role": ep.rls.TEST_CODE,  # Using existing TEST_CODE role instead of creating new one
+    }
+    
+    # Create user and verify creation
+    resp = TEST_CLIENT.put(ep.USERS_EP, json=test)
+    assert resp.status_code == OK, f"User creation failed with status {resp.status_code}"
+    assert resp.json[ep.USERS_RESP] == 'User added!'
+    
+    # Verify user exists in database using general read endpoint
+    resp = TEST_CLIENT.get(ep.USER_READ_EP)
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert test["email"] in resp_json[ep.USER_READ_RESP], f"User {test['email']} not found in users list"
+    
+    # Now test the single user endpoint
+    resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/{test["email"]}')
+    assert resp.status_code == OK, f"Single user read failed with status {resp.status_code}"
+    resp_json = resp.get_json()
+    assert ep.USER_READ_RESP in resp_json
+    assert isinstance(resp_json[ep.USER_READ_RESP], dict)
+    assert resp_json[ep.USER_READ_RESP]['name'] == test['name']
+    assert resp_json[ep.USER_READ_RESP]['email'] == test['email']
+
+    # Test retrieving non-existent user
+    resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/nonexistent@email.com')
+    assert resp.status_code == NOT_FOUND
+
+def test_read_all_texts():
+    """
+    Test retrieving all text entries
+    """
+    test_texts = [
+        {
+            "key": "test_key1",
+            "title": "Test Title 1",
+            "text": "This is test text 1."
+        },
+        {
+            "key": "test_key2",
+            "title": "Test Title 2",
+            "text": "This is test text 2."
+        }
+    ]
+    
+    for text in test_texts:
+        TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=text)
+    
+    resp = TEST_CLIENT.get(ep.TEXT_READ_ALL_EP)
+    assert resp.status_code == OK
+    resp_json = resp.get_json()
+    assert ep.TEXT_READ_RESP in resp_json
+    assert isinstance(resp_json[ep.TEXT_READ_RESP], dict)
+    
+    texts = resp_json[ep.TEXT_READ_RESP]
+    assert "test_key1" in texts
+    assert "test_key2" in texts
+    assert texts["test_key1"]["title"] == "Test Title 1"
+    assert texts["test_key2"]["title"] == "Test Title 2"
