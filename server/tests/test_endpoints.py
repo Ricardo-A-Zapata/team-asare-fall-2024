@@ -11,9 +11,9 @@ from unittest.mock import patch
 
 import pytest
 
+from data.users import NAME
+
 import server.endpoints as ep
-
-
 
 TEST_CLIENT = ep.app.test_client()
 
@@ -22,6 +22,8 @@ TEST_CREATE_TEXT = {
         "title": "Test Title",
         "text": "This is a test text."
     }
+
+
 def test_hello():
     resp = TEST_CLIENT.get(ep.HELLO_EP)
     resp_json = resp.get_json()
@@ -58,14 +60,24 @@ def test_update_users():
     assert resp_json['return'] == True
     assert ep.USER_UPDATE_RESP in resp_json
 
-def test_read_users():
+@patch('data.users.read',autospec=True,  return_value={
+    'ejc369@nyu.edu': {
+        'name': 'Eugene Callahan',
+        'email': 'ejc369@nyu.edu',
+        'affiliation': 'NYU',
+        'roles': []
+    }
+})
+def test_read_users(mock_read):
     resp = TEST_CLIENT.get(ep.USER_READ_EP)
     assert resp.status_code == OK
     resp_json = resp.get_json()
-    assert ep.USER_READ_RESP in resp_json
-    assert isinstance(resp_json[ep.USER_READ_RESP], dict)
-    # Optionally, verify that the test user is in the response
-    assert ep.usr.TEST_EMAIL in resp_json[ep.USER_READ_RESP]
+    assert ep.USER_READ_RESP in resp_json, "USER_READ_RESP not found in response JSON"
+    assert isinstance(resp_json[ep.USER_READ_RESP], dict), "Response is not a dictionary"
+    user_data = resp_json[ep.USER_READ_RESP].get('ejc369@nyu.edu')
+    assert user_data is not None, "Test user email not found in response"
+    assert user_data['name'] == 'Eugene Callahan'
+    assert user_data['affiliation'] == 'NYU'
 
 
 def test_delete():
