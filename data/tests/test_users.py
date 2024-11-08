@@ -109,6 +109,7 @@ def test_short_domain():
 def test_long_domain():
     assert not usrs.is_valid_email(LONG_TLD)
 
+
 #TO BE UNCOMMENTED AFTER ROLES PARAMETER ADDED TO OTHER FUNCTIONS
 # TEMP_EMAIL = 'fake_user_email@gmail.com'
 # TEMP_ROLE_CODE = 'Author'

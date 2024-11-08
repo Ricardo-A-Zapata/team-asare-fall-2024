@@ -137,6 +137,13 @@ def get_masthead() -> dict:
     return masthead
 
 
+def get_mh_field(email: str, field: str):
+    user = users_dict.get(email)
+    if user and field in user:
+        return user[field]
+    return None
+
+
 def main():
     print(get_masthead())
 
