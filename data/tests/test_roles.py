@@ -36,21 +36,18 @@ def test_create_duplicate():
         rls.create("DUP", "Another Duplicate Role")
 
 
-def test_read_one():
-    role = rls.read_one(TEST_ROLE_CODE)
-    assert role == TEST_ROLE_NAME
+def test_read_one(temp_role):
+    role = rls.read_one(temp_role['code'])
+    assert role == temp_role['role']
     assert rls.read_one("INVALID_CODE") is None
 
 
-def test_update():
-    if rls.is_valid(TEST_ROLE_CODE):
-        rls.delete(TEST_ROLE_CODE)
-    rls.create(TEST_ROLE_CODE, TEST_ROLE_NAME)
+def test_update(temp_role):
     updated_role = "Updated Role"
-    result = rls.update(TEST_ROLE_CODE, updated_role)
+    result = rls.update(temp_role['code'], updated_role)
     assert result is True
-    assert rls.get_roles()[TEST_ROLE_CODE] == updated_role
-    other_roles = {code: name for code, name in rls.get_roles().items() if code != TEST_ROLE_CODE}
+    assert rls.get_roles()[temp_role['code']] == updated_role
+    other_roles = {code: name for code, name in rls.get_roles().items() if code != temp_role['code']}
     for code, name in other_roles.items():
         assert name != updated_role  
 
@@ -90,4 +87,9 @@ def test_create_edge_cases():
     assert long_code in rls.get_roles()
     assert rls.get_roles()[long_code] == long_name
 
-
+@pytest.fixture(scope='function')
+def temp_role():
+    temp = {'code':'Temp Role Code', 'role':'Temp Role Value'}
+    rls.create(**temp)
+    yield temp
+    if rls.read_one(temp['code']): rls.delete(temp['code'])
