@@ -16,6 +16,10 @@ def test_get_roles():
 def test_get_masthead_roles():
     mh_roles = rls.get_masthead_roles()
     assert isinstance(mh_roles, dict)
+    for code in mh_roles:
+        assert code in rls.MH_ROLES
+    for code in rls.MH_ROLES:
+        assert code in mh_roles
     
 
 def test_is_valid():
@@ -23,17 +27,16 @@ def test_is_valid():
     assert not rls.is_valid("INVALID_CODE")
 
 
-def test_create():
-    result = rls.create(TEST_ROLE_CODE, TEST_ROLE_NAME)
-    assert result is True
-    assert TEST_ROLE_CODE in rls.ROLES
-    assert rls.ROLES[TEST_ROLE_CODE] == TEST_ROLE_NAME
+def test_create(temp_role):
+    assert temp_role['code'] in rls.ROLES
+    assert rls.ROLES[temp_role['code']] == temp_role['role']
 
 
 def test_create_duplicate():
     rls.create("DUP", "Duplicate Role")
     with pytest.raises(ValueError):
         rls.create("DUP", "Another Duplicate Role")
+    assert rls.read_one("DUP") == "Duplicate Role"
 
 
 def test_read_one(temp_role):
@@ -52,10 +55,10 @@ def test_update(temp_role):
         assert name != updated_role  
 
 
-def test_delete():
-    result = rls.delete(TEST_ROLE_CODE)
+def test_delete(temp_role):
+    result = rls.delete(temp_role['code'])
     assert result is True
-    assert TEST_ROLE_CODE not in rls.ROLES
+    assert temp_role['code'] not in rls.ROLES
 
 
 def test_delete_nonexistent():
@@ -86,6 +89,13 @@ def test_create_edge_cases():
     assert rls.create(long_code, long_name)
     assert long_code in rls.get_roles()
     assert rls.get_roles()[long_code] == long_name
+
+    empty_name = ""
+    assert rls.create("EMPTY", empty_name)
+    assert rls.get_roles()["EMPTY"] == empty_name
+
+    whitespace_code, whitespace_name = "   ", "Whitespace Role"
+    assert rls.create(whitespace_code.strip(), whitespace_name.strip())
 
 @pytest.fixture(scope='function')
 def temp_role():
