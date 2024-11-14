@@ -168,6 +168,32 @@ def editor_move(manuscript_id: str, target_state: str, editor_email: str
     return update_state(manuscript_id, target_state, editor_email)
 
 
+def author_withdraw(manuscript_id: str, author_email: str) -> Optional[dict]:
+    return update_state(manuscript_id, STATE_WITHDRAWN, author_email)
+
+
+def get_referee_verdict(manuscript_id: str) -> Optional[str]:
+    """
+    returns referee's verdict message. 
+    """
+    manuscript = manuscripts.get(manuscript_id)
+    if manuscript and "verdict" in manuscript:
+        return manuscript["verdict"]
+    else:
+        return None
+
+
+def reject_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
+    """
+    rejects manuscript if referee's verdict is REJECT
+    """
+    verdict = get_referee_verdict(manuscript_id)
+    if verdict == VERDICT_REJECT:
+        return update_state(manuscript_id, STATE_REJECTED, actor_email)
+    else:
+        return {"error:", "No reject verdict"}
+
+
 def get_all_manuscripts() -> Dict:
     """
     Get all manuscripts.
