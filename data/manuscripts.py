@@ -113,6 +113,14 @@ def assign_referee(
     return manuscript
 
 
+def remove_referee(manuscript_id: str, referee_email: str) -> Optional[dict]:
+    manuscript = manuscripts.get(manuscript_id)
+    if not manuscript or referee_email not in manuscript[REFEREES]:
+        return None
+    manuscript[REFEREES].pop(referee_email)
+    return manuscript
+
+
 def submit_review(
     manuscript_id: str,
     referee_email: str,
@@ -150,6 +158,14 @@ def assign_editor(
         return None
     manuscript[EDITOR] = editor_email
     return manuscript
+
+
+def editor_move(manuscript_id: str, target_state: str, editor_email: str
+                ) -> Optional[dict]:
+    """
+    Editor is able to move manuscript to any state
+    """
+    return update_state(manuscript_id, target_state, editor_email)
 
 
 def get_all_manuscripts() -> Dict:
