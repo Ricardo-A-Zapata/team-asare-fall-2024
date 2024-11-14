@@ -174,7 +174,7 @@ def author_withdraw(manuscript_id: str, author_email: str) -> Optional[dict]:
 
 def get_referee_verdict(manuscript_id: str) -> Optional[str]:
     """
-    returns referee's verdict message. 
+    returns referee's verdict message.
     """
     manuscript = manuscripts.get(manuscript_id)
     if manuscript and "verdict" in manuscript:
