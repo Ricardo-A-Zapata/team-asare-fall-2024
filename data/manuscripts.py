@@ -66,3 +66,94 @@ def create_manuscript(
     # For now, use timestamp as ID (will be replaced with MongoDB _id)
     manuscripts[timestamp] = manuscript
     return manuscript
+
+
+def get_manuscript(manuscript_id: str) -> Optional[dict]:
+    """
+    Retrieve a manuscript by ID.
+    """
+    return manuscripts.get(manuscript_id)
+
+
+def update_state(
+    manuscript_id: str,
+    new_state: str,
+    actor_email: str
+) -> Optional[dict]:
+    """
+    Update the state of a manuscript and record in history.
+    """
+    manuscript = manuscripts.get(manuscript_id)
+    if not manuscript:
+        return None
+    manuscript[STATE] = new_state
+    manuscript[HISTORY].append({
+        'state': new_state,
+        'timestamp': datetime.now().isoformat(),
+        'actor': actor_email
+    })
+    return manuscript
+
+
+def assign_referee(
+    manuscript_id: str,
+    referee_email: str
+) -> Optional[dict]:
+    """
+    Assign a referee to a manuscript.
+    """
+    manuscript = manuscripts.get(manuscript_id)
+    if not manuscript:
+        return None
+    if referee_email not in manuscript[REFEREES]:
+        manuscript[REFEREES][referee_email] = {
+            'report': None,
+            'verdict': None
+        }
+    return manuscript
+
+
+def submit_review(
+    manuscript_id: str,
+    referee_email: str,
+    report: str,
+    verdict: str
+) -> Optional[dict]:
+    """
+    Submit a referee review.
+    """
+    manuscript = manuscripts.get(manuscript_id)
+    if not manuscript or referee_email not in manuscript[REFEREES]:
+        return None
+    if verdict not in [
+        VERDICT_ACCEPT,
+        VERDICT_ACCEPT_WITH_REVISIONS,
+        VERDICT_REJECT
+    ]:
+        raise ValueError(f"Invalid verdict: {verdict}")
+    manuscript[REFEREES][referee_email].update({
+        'report': report,
+        'verdict': verdict
+    })
+    return manuscript
+
+
+def assign_editor(
+    manuscript_id: str,
+    editor_email: str
+) -> Optional[dict]:
+    """
+    Assign an editor to a manuscript.
+    """
+    manuscript = manuscripts.get(manuscript_id)
+    if not manuscript:
+        return None
+    manuscript[EDITOR] = editor_email
+    return manuscript
+
+
+def get_all_manuscripts() -> Dict:
+    """
+    Get all manuscripts.
+    """
+    return manuscripts
