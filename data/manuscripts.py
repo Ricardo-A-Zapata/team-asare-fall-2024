@@ -2,7 +2,7 @@
 This file contains the manuscript data and operations.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from datetime import datetime
 
 # Constants for manuscript fields
@@ -36,6 +36,7 @@ VERDICT_REJECT = 'REJECT'
 # In-memory storage (will be replaced with MongoDB)
 manuscripts: Dict = {}
 
+
 def create_manuscript(
     title: str,
     author: str,
@@ -62,7 +63,6 @@ def create_manuscript(
         }],
         EDITOR: None
     }
-    
     # For now, use timestamp as ID (will be replaced with MongoDB _id)
     manuscripts[timestamp] = manuscript
     return manuscript
