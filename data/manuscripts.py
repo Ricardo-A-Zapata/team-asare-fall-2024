@@ -157,3 +157,11 @@ def get_all_manuscripts() -> Dict:
     Get all manuscripts.
     """
     return manuscripts
+
+
+def delete_manuscript(manuscript_id: str) -> Optional[dict]:
+    """
+    Delete a manuscript by ID.
+    Returns the deleted manuscript if successful, None if not found.
+    """
+    return manuscripts.pop(manuscript_id, None)
