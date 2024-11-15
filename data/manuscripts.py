@@ -229,7 +229,7 @@ def accept_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
 
 
 def accept_with_revisions(manuscript_id: str, actor_email: str) -> \
-Optional[dict]:
+    Optional[dict]:
     """
     Move manuscript to AUTHOR_REVISIONS after review.
     """
