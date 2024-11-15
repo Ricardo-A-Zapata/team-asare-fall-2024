@@ -226,3 +226,10 @@ def accept_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
         return update_state(manuscript_id, STATE_PUBLISHED, actor_email)
     else:
         return None
+
+
+def accept_with_revisions(manuscript_id: str, actor_email: str) -> Optional[dict]:
+    """
+    Move manuscript to AUTHOR_REVISIONS after review.
+    """
+    return update_state(manuscript_id, STATE_AUTHOR_REVISIONS, actor_email)
