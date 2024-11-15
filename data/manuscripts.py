@@ -207,3 +207,22 @@ def delete_manuscript(manuscript_id: str) -> Optional[dict]:
     Returns the deleted manuscript if successful, None if not found.
     """
     return manuscripts.pop(manuscript_id, None)
+
+
+def accept_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
+    """
+    Accept manuscript, moving it to the next state based on current state.
+    If in AUTHOR_REVISIONS or REFEREE_REVIEW, move to COPY_EDIT.
+    If in EDITOR_REVIEW, move to PUBLISHED.
+    """
+    manuscript = get_manuscript(manuscript_id)
+    if not manuscript:
+        return None
+    current_state = manuscript[STATE]
+    if (current_state == STATE_AUTHOR_REVISIONS or 
+            current_state == STATE_REFEREE_REVIEW):
+        return update_state(manuscript_id, STATE_COPY_EDIT, actor_email)
+    elif current_state == STATE_EDITOR_REVIEW:
+        return update_state(manuscript_id, STATE_PUBLISHED, actor_email)
+    else:
+        return None
