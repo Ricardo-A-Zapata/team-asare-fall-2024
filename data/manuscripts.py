@@ -219,7 +219,7 @@ def accept_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
     if not manuscript:
         return None
     current_state = manuscript[STATE]
-    if (current_state == STATE_AUTHOR_REVISIONS or 
+    if (current_state == STATE_AUTHOR_REVISIONS or
             current_state == STATE_REFEREE_REVIEW):
         return update_state(manuscript_id, STATE_COPY_EDIT, actor_email)
     elif current_state == STATE_EDITOR_REVIEW:
