@@ -84,19 +84,28 @@ def is_valid_email(email: str) -> bool:
     return True
 
 
-def is_valid_user(name: str, email: str, affiliation: str, role: str = None,
-                  roles: list = None) -> bool:
-    if email in users_dict:
-        raise ValueError(f'Adding duplicate {email=}')
+def is_valid_user(
+        name: str,
+        email: str,
+        affiliation: str,
+        role: str = None,
+        roles: list = None
+) -> bool:
+    """
+    Validate user data before creation/update
+    """
+    if not name or len(name) < MIN_USER_NAME_LEN:
+        raise ValueError(f'Name must be least {MIN_USER_NAME_LEN} characters')
     if not is_valid_email(email):
         raise ValueError(f'Invalid email: {email}')
-    if role:
-        if not rls.is_valid(role):
-            raise ValueError(f'Invalid Role: {role}')
-    elif role:
-        for role in roles:
-            if not rls.is_valid(role):
-                raise ValueError(f'Invalid Role: {role}')
+    if not affiliation:
+        raise ValueError('Affiliation cannot be empty')
+    if role and not rls.is_valid(role):
+        raise ValueError(f'Invalid Role: {role}')
+    if roles:
+        for r in roles:
+            if not rls.is_valid(r):
+                raise ValueError(f'Invalid Role: {r}')
     return True
 
 
@@ -113,7 +122,6 @@ def create(name: str, email: str, affiliation: str, role: str = None):
                             ROLES: [role] if role else []
                          }
     return email
-
 
 def update(name: str, email: str, affiliation: str):
     if email in users_dict:
