@@ -3,7 +3,11 @@ This module interfaces to our user data.
 """
 import re
 
+import data.db_connect as dbc
+
 import data.roles as rls
+
+USER_COLLECT = 'users'
 
 LEVEL = 'level'
 MIN_USER_NAME_LEN = 2
