@@ -3,11 +3,8 @@ This module interfaces to our user data.
 """
 import re
 
-import data.db_connect as dbc
-
 import data.roles as rls
-
-USER_COLLECT = 'users'
+import data.db_connect as dbc
 
 LEVEL = 'level'
 MIN_USER_NAME_LEN = 2
@@ -17,26 +14,52 @@ ROLES = 'roles'
 EMAIL = 'email'
 AFFILIATION = 'affiliation'
 TEST_EMAIL = 'ejc369@nyu.edu'
+TEST_COLLECTION = 'test_users'
+
+# Initialize DB connection
+dbc.connect_db()
 
 
-users_dict = {
-    TEST_EMAIL: {
+def init_db():
+    """
+    Initialize the users collection with test data if it doesn't exist
+    """
+    test_user = {
         NAME: 'Eugene Callahan',
         ROLES: [],
         AFFILIATION: "NYU",
         EMAIL: TEST_EMAIL,
     }
-}
+    if not dbc.fetch_one(dbc.USERS_COLLECTION, {EMAIL: TEST_EMAIL}):
+        dbc.insert_one(dbc.USERS_COLLECTION, test_user)
 
 
-def read():
+# Call initialization
+init_db()
+
+
+def get_collection_name(testing=False):
+    """Return the appropriate collection name based on testing flag"""
+    return TEST_COLLECTION if testing else dbc.USERS_COLLECTION
+
+
+def read(testing=False):
     """
     Our contract:
         - No arguments.
         - Returns a dictionary of users keyed on user name (a str).
         - Each user name must be the key for a dictionary.
+    Read all users from MongoDB.
+    Returns a dictionary of users keyed by email.
     """
     users = users_dict
+    users = {}
+    collection = get_collection_name(testing)
+    all_users = dbc.fetch_all(collection)
+    for user in all_users:
+        if dbc.MONGO_ID in user:
+            del user[dbc.MONGO_ID]
+        users[user[EMAIL]] = user
     return users
 
 
@@ -145,11 +168,13 @@ def get_masthead() -> dict:
     return masthead
 
 
-def get_mh_field(email: str, field: str):
-    user = users_dict.get(email)
-    if user and field in user:
-        return user[field]
-    return None
+def clean_mongo_doc(doc):
+    """
+    Remove MongoDB-specific fields from a document
+    """
+    if doc and dbc.MONGO_ID in doc:
+        del doc[dbc.MONGO_ID]
+    return doc
 
 
 def main():
