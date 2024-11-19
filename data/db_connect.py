@@ -6,6 +6,7 @@ LOCAL = "0"
 CLOUD = "1"
 
 GAME_DB = 'gamesDB'
+USERS_COLLECTION = 'users'
 
 client = None
 

@@ -15,13 +15,19 @@ from data.users import NAME
 
 import server.endpoints as ep
 
-TEST_CLIENT = ep.app.test_client()
+TEST_CLIENT = None
 
-TEST_CREATE_TEXT = {
-        "key": "test_key",
-        "title": "Test Title",
-        "text": "This is a test text."
-    }
+@pytest.fixture(autouse=True)
+def setup_test_client():
+    """
+    Setup a test client before each test.
+    This fixture also configures the app for testing.
+    """
+    global TEST_CLIENT
+    ep.app.config['TESTING'] = True
+    TEST_CLIENT = ep.app.test_client()
+    yield TEST_CLIENT
+    ep.app.config['TESTING'] = False
 
 
 def test_hello():
@@ -49,18 +55,35 @@ def test_create():
     assert resp.status_code == OK
     assert resp.json[ep.USERS_RESP] == 'User added!'
 
+    # Clean up
+    TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
+
+
 def test_update_users():
-    test_update = {'name': "test_name",
-	"email": "test@user.com",
-	"affiliation": "University",
+    # First create a user to update
+    test = {
+        "name": "test_name",
+        "email": "test@user.com",
+        "affiliation": "Test Uni",
     }
-    resp = TEST_CLIENT.put(ep.USER_UPDATE_EP, json = test_update)
+    TEST_CLIENT.put(ep.USERS_EP, json=test)
+
+    test_update = {
+        'name': "updated_name",
+        "email": "test@user.com",
+        "affiliation": "University",
+    }
+    resp = TEST_CLIENT.put(ep.USER_UPDATE_EP, json=test_update)
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert resp_json['return'] == True
     assert ep.USER_UPDATE_RESP in resp_json
 
-@patch('data.users.read',autospec=True,  return_value={
+    # Clean up
+    TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
+
+
+@patch('data.users.read', autospec=True, return_value={
     'ejc369@nyu.edu': {
         'name': 'Eugene Callahan',
         'email': 'ejc369@nyu.edu',
@@ -72,47 +95,56 @@ def test_read_users(mock_read):
     resp = TEST_CLIENT.get(ep.USER_READ_EP)
     assert resp.status_code == OK
     resp_json = resp.get_json()
-    assert ep.USER_READ_RESP in resp_json, "USER_READ_RESP not found in response JSON"
-    assert isinstance(resp_json[ep.USER_READ_RESP], dict), "Response is not a dictionary"
+    assert ep.USER_READ_RESP in resp_json
+    assert isinstance(resp_json[ep.USER_READ_RESP], dict)
     user_data = resp_json[ep.USER_READ_RESP].get('ejc369@nyu.edu')
-    assert user_data is not None, "Test user email not found in response"
+    assert user_data is not None
     assert user_data['name'] == 'Eugene Callahan'
     assert user_data['affiliation'] == 'NYU'
 
 
 def test_delete():
-    # Will try to delete the test user, then will add that user back in
+    # Create test user first
     test = {
-    "name": "randomNametoTest",
-    "email": "randomNametoTest@hotmail.com",
-    "affiliation": "Random Uni to Test",
+        "name": "randomNametoTest",
+        "email": "randomNametoTest@hotmail.com",
+        "affiliation": "Random Uni to Test",
     }
     resp = TEST_CLIENT.put(ep.USERS_EP, json=test)
-    if resp.status_code != OK:
-        raise Exception("Could not create test user to delete")
-    # test deletion for existing user
+    assert resp.status_code == OK, "Could not create test user to delete"
+
+    # Test deletion for existing user
     resp = TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
     assert resp.status_code == OK
-    assert resp.json != None, resp.json[ep.USER_DELETE_RESP] == 'Success'
+    assert resp.json[ep.USER_DELETE_RESP] == 'success'
 
-    # test deletion for nonexistent user after it was deleted
+    # Test deletion for nonexistent user
     resp = TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
     assert resp.status_code == NOT_FOUND
 
+
 def test_create_text():
-    resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=TEST_CREATE_TEXT)
-    assert resp.status_code == OK
-    assert resp.json[ep.TEXT_CREATE_RESP] == 'Text entry created!'
+    try:
+        resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=ep.TEST_CREATE_TEXT)
+        assert resp.status_code == OK
+        assert resp.json[ep.TEXT_CREATE_RESP] == 'Text entry created!'
+    finally:
+        # Clean up
+        TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{ep.TEST_CREATE_TEXT["key"]}')
 
 
 def test_duplicate_text():
-    # Makes sure that we can't create duplicate text
-    resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=TEST_CREATE_TEXT)
-    assert resp.status_code == NOT_ACCEPTABLE
-
-
-TEXT_READ_EP = '/text/read'
-TEXT_READ_RESP = 'Content'
+    try:
+        # First creation should succeed
+        resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=ep.TEST_CREATE_TEXT)
+        assert resp.status_code == OK
+        
+        # Second creation should fail
+        resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=ep.TEST_CREATE_TEXT)
+        assert resp.status_code == NOT_ACCEPTABLE
+    finally:
+        # Clean up
+        TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{ep.TEST_CREATE_TEXT["key"]}')
 
 
 def test_read_text():
@@ -120,7 +152,7 @@ def test_read_text():
         "key": "read_test_key",
         "title": "Read Test Title",
         "text": "This is a test text for reading."
-        }
+    }
     TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
     resp = TEST_CLIENT.get(f'{ep.TEXT_READ_EP}/{test_text["key"]}')
     assert resp.status_code == OK
@@ -131,14 +163,15 @@ def test_read_text():
 
 
 def test_delete_text():
-    # create text entry
+    # Create text entry
     test_text = {
         "key": "delete_test_key",
         "title": "Delete Test Title",
         "text": "testing testing testing."
     }
     TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
-    # delete entry
+    
+    # Delete entry
     resp = TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{test_text["key"]}')
     assert resp.status_code == OK
     assert resp.json[ep.TEXT_DELETE_RESP] == 'Text entry deleted!'
@@ -170,14 +203,16 @@ def test_update_text():
     assert resp_json[ep.TEXT_READ_RESP]['title'] == updated_text['title']
     assert resp_json[ep.TEXT_READ_RESP]['text'] == updated_text['text']
 
+
 def test_update_nonexistent_text():
     nonexistent_text = {
-        "key":"nonexistent_key",
-        "title":"Nonexistent Title",
-        "text":"This text doesn't exist."
+        "key": "nonexistent_key",
+        "title": "Nonexistent Title",
+        "text": "This text doesn't exist."
     }
     resp = TEST_CLIENT.put(ep.TEXT_UPDATE_EP, json=nonexistent_text)
     assert resp.status_code == NOT_ACCEPTABLE
+
 
 def test_read_all_roles():
     resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
@@ -185,8 +220,8 @@ def test_read_all_roles():
     resp_json = resp.get_json()
     assert ep.ROLE_READ_RESP in resp_json
     assert isinstance(resp_json[ep.ROLE_READ_RESP], dict)
-    # Optionally, verify that the test role is in the response
     assert ep.rls.TEST_CODE in resp_json[ep.ROLE_READ_RESP]
+
 
 def test_create_role():
     test_role = {
@@ -197,13 +232,25 @@ def test_create_role():
     assert resp.status_code == OK
     assert resp.json[ep.ROLE_CREATE_RESP] == 'Role created!'
 
+    # Clean up
+    TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/{test_role["code"]}')
+
+
 def test_create_duplicate_role():
     test_role = {
         "code": "TR",
         "role": "Test Role"
     }
+    # Create first time
+    TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
+    
+    # Try to create duplicate
     resp = TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
     assert resp.status_code == NOT_ACCEPTABLE
+
+    # Clean up
+    TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/{test_role["code"]}')
+
 
 def test_read_roles():
     resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
@@ -211,13 +258,32 @@ def test_read_roles():
     assert ep.ROLE_READ_RESP in resp.json
     assert isinstance(resp.json[ep.ROLE_READ_RESP], dict)
 
+
 def test_read_one_role():
+    # Create test role first
+    test_role = {
+        "code": "TR",
+        "role": "Test Role"
+    }
+    TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
+
     resp = TEST_CLIENT.get(f'{ep.ROLE_READ_EP}/TR')
     assert resp.status_code == OK
     assert ep.ROLE_READ_RESP in resp.json
     assert isinstance(resp.json[ep.ROLE_READ_RESP], str)
 
+    # Clean up
+    TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/{test_role["code"]}')
+
+
 def test_update_role():
+    # Create test role first
+    test_role = {
+        "code": "TR",
+        "role": "Test Role"
+    }
+    TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
+
     updated_role = {
         "code": "TR",
         "role": "Updated Test Role"
@@ -226,6 +292,10 @@ def test_update_role():
     assert resp.status_code == OK
     assert resp.json[ep.ROLE_UPDATE_RESP] == 'Role updated!'
 
+    # Clean up
+    TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/{test_role["code"]}')
+
+
 def test_update_nonexistent_role():
     updated_role = {
         "code": "NE",
@@ -233,61 +303,66 @@ def test_update_nonexistent_role():
     }
     resp = TEST_CLIENT.put(ep.ROLE_UPDATE_EP, json=updated_role)
     assert resp.status_code == NOT_ACCEPTABLE
-    
+
+
 def test_delete_role():
+    # Create test role first
+    test_role = {
+        "code": "TR",
+        "role": "Test Role"
+    }
+    TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
+
     resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/TR')
     assert resp.status_code == OK
     assert resp.json[ep.ROLE_DELETE_RESP] == 'Role deleted!'
 
-def test_delete_nonexisent_role():
+
+def test_delete_nonexistent_role():
     resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/NONEXISTENT')
     assert resp.status_code == NOT_FOUND
 
+
 def test_masthead():
     resp = TEST_CLIENT.get(ep.USER_GET_MASTHEAD)
-    #assert resp.status_code == OK
     resp_json = resp.get_json()
-    #assert ep.USER_GET_MASTHEAD_RESP in resp_json
+    assert ep.USER_GET_MASTHEAD_RESP in resp_json
+
 
 def test_read_single_user():
     """
     Test retrieving a single user by email
     """
-    # Clean up any existing test user first
-    test_email = "test@user.com"
-    TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test_email}')
-    
     # Create test user
     test = {
         "name": "test_user",
-        "email": test_email,
+        "email": "test@user.com",
         "affiliation": "Test Uni",
-        "role": ep.rls.TEST_CODE,  # Using existing TEST_CODE role instead of creating new one
     }
     
-    # Create user and verify creation
-    resp = TEST_CLIENT.put(ep.USERS_EP, json=test)
-    assert resp.status_code == OK, f"User creation failed with status {resp.status_code}"
-    assert resp.json[ep.USERS_RESP] == 'User added!'
-    
-    # Verify user exists in database using general read endpoint
-    resp = TEST_CLIENT.get(ep.USER_READ_EP)
-    assert resp.status_code == OK
-    resp_json = resp.get_json()
-    assert test["email"] in resp_json[ep.USER_READ_RESP], f"User {test['email']} not found in users list"
-    
-    # Now test the single user endpoint
-    resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/{test["email"]}')
-    assert resp.status_code == OK, f"Single user read failed with status {resp.status_code}"
-    resp_json = resp.get_json()
-    assert ep.USER_READ_RESP in resp_json
-    assert isinstance(resp_json[ep.USER_READ_RESP], dict)
-    assert resp_json[ep.USER_READ_RESP]['name'] == test['name']
-    assert resp_json[ep.USER_READ_RESP]['email'] == test['email']
+    try:
+        # Create user and verify creation
+        resp = TEST_CLIENT.put(ep.USERS_EP, json=test)
+        assert resp.status_code == OK
+        assert resp.json[ep.USERS_RESP] == 'User added!'
+        
+        # Test reading the single user
+        resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/{test["email"]}')
+        assert resp.status_code == OK
+        resp_json = resp.get_json()
+        assert ep.USER_READ_RESP in resp_json
+        assert isinstance(resp_json[ep.USER_READ_RESP], dict)
+        assert resp_json[ep.USER_READ_RESP]['name'] == test['name']
+        assert resp_json[ep.USER_READ_RESP]['email'] == test['email']
 
-    # Test retrieving non-existent user
-    resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/nonexistent@email.com')
-    assert resp.status_code == NOT_FOUND
+        # Test retrieving non-existent user
+        resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/nonexistent@email.com')
+        assert resp.status_code == NOT_FOUND
+
+    finally:
+        # Clean up
+        TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
+
 
 def test_read_all_texts():
     """

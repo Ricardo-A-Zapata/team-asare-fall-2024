@@ -5,7 +5,7 @@ The endpoint called `endpoints` will return all available endpoints.
 
 from http import HTTPStatus
 
-from flask import Flask, request  # , request
+from flask import Flask, request, current_app  # , request
 from flask_restx import Resource, Api, fields  # Namespace, fields
 from flask_cors import CORS
 
@@ -68,6 +68,13 @@ USER_CREATE_FLDS = api.model('AddNewUserEntry', {
     usr.AFFILIATION: fields.String,
 })
 
+TESTING = 'TESTING'
+TEST_CREATE_TEXT = {
+    "key": "test_key",
+    "title": "Test Title",
+    "text": "This is a test text."
+}
+
 
 @api.route(USERS_EP)
 class UserCreate(Resource):
@@ -85,10 +92,10 @@ class UserCreate(Resource):
             name = request.json.get(usr.NAME)
             email = request.json.get(usr.EMAIL)
             affiliation = request.json.get(usr.AFFILIATION)
-            ret = usr.create(name, email, affiliation)
+            testing = current_app.config.get(TESTING, False)
+            ret = usr.create(name, email, affiliation, testing=testing)
         except Exception as err:
-            raise wz.NotAcceptable(f'Count not add user: '
-                                   f'{err=}')
+            raise wz.NotAcceptable(f'Count not add user: {err=}')
         return {
             USERS_RESP: 'User added!',
             RETURN: ret,
@@ -107,12 +114,13 @@ class UserUpdate(Resource):
             email = request.json.get(usr.EMAIL)
             name = request.json.get(usr.NAME)
             affiliation = request.json.get(usr.AFFILIATION)
-            ret = usr.update(name, email, affiliation)
+            testing = current_app.config.get(TESTING, False)
+            ret = usr.update(name, email, affiliation, testing=testing)
         except Exception as err:
-            raise wz.NotAcceptable(f'Could not update user: '
-                                   f'{err=}')
+            raise wz.NotAcceptable(f'Could not update user: {err=}')
         return {
-            USER_UPDATE_RESP: 'Updated Successfully', RETURN: ret,
+            USER_UPDATE_RESP: 'Updated Successfully',
+            RETURN: ret,
         }
 
 
@@ -125,8 +133,8 @@ class UserDelete(Resource):
     @api.response(HTTPStatus.NOT_FOUND, 'No such user.')
     def delete(self, _id):
         try:
-            # delete the user
-            ret = usr.delete(_id)
+            testing = current_app.config.get(TESTING, False)
+            ret = usr.delete(_id, testing=testing)
         except Exception as err:
             raise wz.NotFound(f'No such user: {_id}' f'{err=}')
         return {
@@ -147,7 +155,8 @@ class UserRead(Resource):
         Retrieve all users.
         """
         try:
-            users = usr.read()
+            testing = current_app.config.get(TESTING, False)
+            users = usr.read(testing=testing)
             if not users:
                 return {USER_READ_RESP: 'No users found'}
         except Exception as err:
@@ -409,7 +418,8 @@ class UserReadSingle(Resource):
         Retrieve a single user by email.
         """
         try:
-            user = usr.read_one(email)  # Using existing read_one function
+            testing = current_app.config.get(TESTING, False)
+            user = usr.read_one(email, testing=testing)
             if not user:
                 raise wz.NotFound(f'User with email {email} not found.')
             return {USER_READ_RESP: user}
