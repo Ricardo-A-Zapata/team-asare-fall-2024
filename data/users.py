@@ -52,7 +52,7 @@ def read(testing=False):
     Read all users from MongoDB.
     Returns a dictionary of users keyed by email.
     """
-    users = users_dict
+    # users = users_dict
     users = {}
     collection = get_collection_name(testing)
     all_users = dbc.fetch_all(collection)
@@ -63,8 +63,22 @@ def read(testing=False):
     return users
 
 
-def read_one(email: str):
-    return users_dict.get(email)
+def read_one(email: str, testing=False):
+    """
+    Read a single user from MongoDB.
+    Returns None if user not found.
+    """
+    try:
+        collection = get_collection_name(testing)
+        user = dbc.fetch_one(collection, {EMAIL: email})
+        if user:
+            if dbc.MONGO_ID in user:
+                del user[dbc.MONGO_ID]
+            return user
+        return None
+    except Exception as e:
+        print(f"Error in read_one: {str(e)}")
+        return None
 
 
 VALID_CHARS = r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]"
