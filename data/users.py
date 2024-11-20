@@ -109,19 +109,36 @@ def is_valid_user(
     return True
 
 
-def create(name: str, email: str, affiliation: str, role: str = None):
-    if email in users_dict:
-        raise ValueError(f'Adding duplicate {email=}')
-    if role:
-        if not rls.is_valid(role):
-            raise ValueError(f'Invalid Role: {role}')
-    users_dict[email] = {
-                            NAME: name,
-                            EMAIL: email,
-                            AFFILIATION: affiliation,
-                            ROLES: [role] if role else []
-                         }
-    return email
+def create(name: str, email: str, affiliation: str, testing=False):
+    """
+    Create a new user in MongoDB.
+    First validates the user data, then inserts if valid.
+    """
+    try:
+        # First validate the user data
+        if not is_valid_user(name, email, affiliation):
+            raise ValueError("Invalid user data")
+
+        # Check for existing user
+        collection = get_collection_name(testing)
+        existing = dbc.fetch_one(collection, {EMAIL: email})
+        if existing:
+            msg = f"User with email {email} already exists"
+            raise ValueError(msg)
+
+        # Create new user
+        user_doc = {
+            NAME: name,
+            EMAIL: email,
+            AFFILIATION: affiliation,
+            ROLES: []  # Initialize with empty roles
+        }
+        dbc.insert_one(collection, user_doc)
+        return email
+    except Exception as e:
+        print(f"Error in create: {str(e)}")
+        raise ValueError(str(e))
+
 
 def update(name: str, email: str, affiliation: str):
     if email in users_dict:
