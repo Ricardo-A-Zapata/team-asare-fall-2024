@@ -140,6 +140,25 @@ def create(name: str, email: str, affiliation: str, testing=False):
         raise ValueError(str(e))
 
 
+def delete(_id: str, testing=False):
+    """
+    Delete a user by email from MongoDB.
+    Returns the deleted email if successful, raises KeyError if not found.
+    """
+    try:
+        collection = get_collection_name(testing)
+        user = dbc.fetch_one(collection, {EMAIL: _id})
+        if not user:
+            raise KeyError(f'User with email "{_id}" not found')
+        dbc.del_one(collection, {EMAIL: _id})
+        return _id
+    except KeyError as e:
+        raise e
+    except Exception as e:
+        print(f"Error in delete: {str(e)}")
+        raise ValueError(f"Database error: {str(e)}")
+
+
 def update(name: str, email: str, affiliation: str):
     if email in users_dict:
         users_dict[email] = {
