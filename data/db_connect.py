@@ -38,6 +38,11 @@ def connect_db():
             client = pm.MongoClient()
 
 
+def convert_mongo_id(doc: dict):
+    if MONGO_ID in doc:
+        doc[MONGO_ID] = str(doc[MONGO_ID])
+
+
 def insert_one(collection, doc, db=GAME_DB):
     """
     Insert a single doc into collection.
