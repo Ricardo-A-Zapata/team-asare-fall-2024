@@ -4,7 +4,8 @@ This file contains the manuscript data and operations.
 
 from typing import Dict, Optional
 from datetime import datetime
-from data.db_connect import connect_db, insert_one
+import data.db_connect as db
+from bson import ObjectId
 
 # Constants for manuscript fields
 TITLE = 'title'
@@ -38,7 +39,7 @@ VERDICT_REJECT = 'REJECT'
 manuscripts: Dict = {}
 MANUSCRIPTS_COLLECTION = "manuscripts"  # MongoDB collection for manuscripts
 
-connect_db()  # connect to MongoDB
+db.connect_db()  # connect to MongoDB
 
 
 def create_manuscript(
@@ -69,19 +70,26 @@ def create_manuscript(
         EDITOR: None
     }
 
-    # Insert into the database
-    manuscript_id = insert_one(MANUSCRIPTS_COLLECTION, manuscript)
-
-    # Add the _id field to the manuscript
-    manuscript['_id'] = manuscript_id
+    # Insert into the database and extract the inserted ID
+    result = db.insert_one(MANUSCRIPTS_COLLECTION, manuscript)
+    manuscript['_id'] = str(result.inserted_id)
     return manuscript
 
 
 def get_manuscript(manuscript_id: str) -> Optional[dict]:
     """
-    Retrieve a manuscript by ID.
+    Retrieve a manuscript by ID from MongoDB.
     """
-    return manuscripts.get(manuscript_id)
+    try:
+        manuscript = db.fetch_one(
+            MANUSCRIPTS_COLLECTION, {"_id": ObjectId(manuscript_id)}
+        )
+        if manuscript:
+            manuscript['_id'] = str(manuscript['_id'])
+        return manuscript
+    except Exception as e:
+        print(f"Error fetching manuscript: {e}")
+        return None
 
 
 def update_state(
@@ -100,57 +108,6 @@ def update_state(
         'state': new_state,
         'timestamp': datetime.now().isoformat(),
         'actor': actor_email
-    })
-    return manuscript
-
-
-def assign_referee(
-    manuscript_id: str,
-    referee_email: str
-) -> Optional[dict]:
-    """
-    Assign a referee to a manuscript.
-    """
-    manuscript = manuscripts.get(manuscript_id)
-    if not manuscript:
-        return None
-    if referee_email not in manuscript[REFEREES]:
-        manuscript[REFEREES][referee_email] = {
-            'report': None,
-            'verdict': None
-        }
-    return manuscript
-
-
-def remove_referee(manuscript_id: str, referee_email: str) -> Optional[dict]:
-    manuscript = manuscripts.get(manuscript_id)
-    if not manuscript or referee_email not in manuscript[REFEREES]:
-        return None
-    manuscript[REFEREES].pop(referee_email)
-    return manuscript
-
-
-def submit_review(
-    manuscript_id: str,
-    referee_email: str,
-    report: str,
-    verdict: str
-) -> Optional[dict]:
-    """
-    Submit a referee review.
-    """
-    manuscript = manuscripts.get(manuscript_id)
-    if not manuscript or referee_email not in manuscript[REFEREES]:
-        return None
-    if verdict not in [
-        VERDICT_ACCEPT,
-        VERDICT_ACCEPT_WITH_REVISIONS,
-        VERDICT_REJECT
-    ]:
-        raise ValueError(f"Invalid verdict: {verdict}")
-    manuscript[REFEREES][referee_email].update({
-        'report': report,
-        'verdict': verdict
     })
     return manuscript
 
@@ -250,4 +207,4 @@ def save_manuscript(manuscript: dict) -> None:
     """
     Save a manuscript to MongoDB.
     """
-    insert_one(MANUSCRIPTS_COLLECTION, manuscript)
+    db.insert_one(MANUSCRIPTS_COLLECTION, manuscript)

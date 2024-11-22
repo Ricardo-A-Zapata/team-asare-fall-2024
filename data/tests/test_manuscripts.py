@@ -29,3 +29,27 @@ def test_create_manuscript():
     # Cleanup after testing
     if "_id" in manuscript:
         ms.delete_manuscript(manuscript["_id"])
+
+
+def test_get_manuscript():
+    # Create a manuscript
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+
+    # Retrieve the manuscript by ID
+    retrieved = ms.get_manuscript(str(manuscript["_id"]))
+
+    # Verify the retrieved manuscript matches the created one
+    assert retrieved is not None
+    assert retrieved[ms.TITLE] == TEST_TITLE
+    assert retrieved[ms.AUTHOR] == TEST_AUTHOR
+    assert retrieved[ms.AUTHOR_EMAIL] == TEST_AUTHOR_EMAIL
+    assert retrieved[ms.STATE] == ms.STATE_SUBMITTED
+
+    # Cleanup
+    ms.delete_manuscript(str(manuscript["_id"]))
