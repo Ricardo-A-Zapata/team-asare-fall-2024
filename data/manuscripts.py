@@ -4,6 +4,7 @@ This file contains the manuscript data and operations.
 
 from typing import Dict, Optional
 from datetime import datetime
+from data.db_connect import connect_db, insert_one
 
 # Constants for manuscript fields
 TITLE = 'title'
@@ -35,6 +36,9 @@ VERDICT_REJECT = 'REJECT'
 
 # In-memory storage (will be replaced with MongoDB)
 manuscripts: Dict = {}
+MANUSCRIPTS_COLLECTION = "manuscripts"  # MongoDB collection for manuscripts
+
+connect_db()  # connect to MongoDB
 
 
 def create_manuscript(
@@ -235,3 +239,10 @@ def accept_with_revisions(
     Move manuscript to AUTHOR_REVISIONS after review.
     """
     return update_state(manuscript_id, STATE_AUTHOR_REVISIONS, actor_email)
+
+
+def save_manuscript(manuscript: dict) -> None:
+    """
+    Save a manuscript to MongoDB.
+    """
+    insert_one(MANUSCRIPTS_COLLECTION, manuscript)
