@@ -49,9 +49,10 @@ def create_manuscript(
     abstract: str
 ) -> dict:
     """
-    Create a new manuscript entry.
+    Create a new manuscript entry and insert it into the database.
     """
     timestamp = datetime.now().isoformat()
+    # Construct the manuscript dictionary
     manuscript = {
         TITLE: title,
         AUTHOR: author,
@@ -67,8 +68,12 @@ def create_manuscript(
         }],
         EDITOR: None
     }
-    # For now, use timestamp as ID (will be replaced with MongoDB _id)
-    manuscripts[timestamp] = manuscript
+
+    # Insert into the database
+    manuscript_id = insert_one(MANUSCRIPTS_COLLECTION, manuscript)
+
+    # Add the _id field to the manuscript
+    manuscript['_id'] = manuscript_id
     return manuscript
 
 
