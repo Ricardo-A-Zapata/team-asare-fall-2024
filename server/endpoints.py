@@ -76,6 +76,25 @@ TEST_CREATE_TEXT = {
 }
 
 
+def handle_request_error(
+        operation: str,
+        err: Exception,
+        error_class=wz.NotAcceptable
+):
+    """
+    Standardized error handling for API requests
+    """
+    raise error_class(f'Could not {operation}: {err}')
+
+
+def create_response(message_type: str, data=None):
+    """
+    Create a standardized response format that matches test expectations
+    """
+    response = {message_type: data if data is not None else 'success'}
+    return response
+
+
 @api.route(USERS_EP)
 class UserCreate(Resource):
     """
@@ -94,12 +113,14 @@ class UserCreate(Resource):
             affiliation = request.json.get(usr.AFFILIATION)
             testing = current_app.config.get(TESTING, False)
             ret = usr.create(name, email, affiliation, testing=testing)
+            return {USERS_RESP: 'User added!', RETURN: ret}
         except Exception as err:
             raise wz.NotAcceptable(f'Count not add user: {err=}')
         return {
             USERS_RESP: 'User added!',
             RETURN: ret,
         }
+            handle_request_error('add user', err)
 
 
 @api.route(USER_UPDATE_EP)
