@@ -115,11 +115,6 @@ class UserCreate(Resource):
             ret = usr.create(name, email, affiliation, testing=testing)
             return {USERS_RESP: 'User added!', RETURN: ret}
         except Exception as err:
-            raise wz.NotAcceptable(f'Count not add user: {err=}')
-        return {
-            USERS_RESP: 'User added!',
-            RETURN: ret,
-        }
             handle_request_error('add user', err)
 
 
@@ -137,12 +132,9 @@ class UserUpdate(Resource):
             affiliation = request.json.get(usr.AFFILIATION)
             testing = current_app.config.get(TESTING, False)
             ret = usr.update(name, email, affiliation, testing=testing)
+            return {USER_UPDATE_RESP: 'Updated Successfully', RETURN: ret}
         except Exception as err:
-            raise wz.NotAcceptable(f'Could not update user: {err=}')
-        return {
-            USER_UPDATE_RESP: 'Updated Successfully',
-            RETURN: ret,
-        }
+            handle_request_error('update user', err)
 
 
 @api.route(f'{USER_DELETE_EP}/<_id>')
@@ -156,12 +148,9 @@ class UserDelete(Resource):
         try:
             testing = current_app.config.get(TESTING, False)
             ret = usr.delete(_id, testing=testing)
+            return {USER_DELETE_RESP: 'success', RETURN: ret}
         except Exception as err:
-            raise wz.NotFound(f'No such user: {_id}' f'{err=}')
-        return {
-            USER_DELETE_RESP: 'success',
-            RETURN: ret,
-        }
+            handle_request_error('delete user', err, wz.NotFound)
 
 
 @api.route(USER_READ_EP)
@@ -262,12 +251,9 @@ class TextCreate(Resource):
             title = request.json.get(txt.TITLE)
             text = request.json.get(txt.TEXT)
             ret = txt.create(key, title, text)
+            return {TEXT_CREATE_RESP: 'Text entry created!', RETURN: ret}
         except Exception as err:
-            raise wz.NotAcceptable(f'Could not create text entry: {err}')
-        return {
-            TEXT_CREATE_RESP: 'Text entry created!',
-            RETURN: ret,
-        }
+            handle_request_error('create text entry', err)
 
 
 TEXT_DELETE_EP = '/text/delete'
@@ -290,7 +276,7 @@ class TextDelete(Resource):
             if not ret:
                 raise wz.NotFound(f'Text entry with key "{key}" not found.')
         except Exception as err:
-            raise wz.NotFound(f'Could not delete text entry: {err}')
+            handle_request_error('delete text entry', err, wz.NotFound)
         return {
             TEXT_DELETE_RESP: 'Text entry deleted!',
             RETURN: ret,
@@ -313,7 +299,7 @@ class TextRead(Resource):
             if not txt_entry:
                 raise wz.NotFound(f'No text found for key:{key}')
         except Exception as err:
-            raise wz.NotFound(f'Error reading text: {err}')
+            handle_request_error('read text', err, wz.NotFound)
         return {
             TEXT_READ_RESP: txt_entry
         }
@@ -338,12 +324,12 @@ class TextUpdate(Resource):
             if key not in txt.text_dict:
                 raise wz.NotAcceptable(f'No text found for key: {key}')
             ret = txt.update(key, title, text)
+            return {
+                    TEXT_UPDATE_RESP: 'Text entry updated successfully',
+                    RETURN: ret
+                }
         except Exception as err:
-            raise wz.NotAcceptable(f'Could not update text entry: {err}')
-        return {
-            TEXT_UPDATE_RESP: 'Text entry updated successfully',
-            RETURN: ret
-        }
+            handle_request_error('update text entry', err)
 
 
 @api.route(ROLE_READ_EP)
@@ -378,7 +364,7 @@ class RoleCreate(Resource):
             ret = rls.create(code, role)
             return {ROLE_CREATE_RESP: 'Role created!', RETURN: ret}
         except Exception as e:
-            raise wz.NotAcceptable(f'Could not create role: {str(e)}')
+            handle_request_error('create role', e)
 
 
 @api.route(f'{ROLE_READ_EP}/<string:code>')
@@ -390,7 +376,7 @@ class RoleReadOne(Resource):
                 raise wz.NotFound(f'No role found for code: {code}')
             return {ROLE_READ_RESP: role}
         except Exception as e:
-            raise wz.NotFound(f'Error reading role: {str(e)}')
+            handle_request_error('read role', e, wz.NotFound)
 
 
 @api.route(ROLE_UPDATE_EP)
@@ -403,7 +389,7 @@ class RoleUpdate(Resource):
             ret = rls.update(code, role)
             return {ROLE_UPDATE_RESP: 'Role updated!', RETURN: ret}
         except Exception as e:
-            raise wz.NotAcceptable(f'Could not update role: {str(e)}')
+            handle_request_error('update role', e)
 
 
 @api.route(f'{ROLE_DELETE_EP}/<string:code>')
@@ -415,13 +401,13 @@ class RoleDelete(Resource):
                 raise wz.NotFound(f'Role with code "{code}" not found.')
             return {ROLE_DELETE_RESP: 'Role deleted!', RETURN: ret}
         except Exception as e:
-            raise wz.NotFound(f'Could not delete role: {str(e)}')
+            handle_request_error('delete role', e, wz.NotFound)
 
 
 @api.route(USER_GET_MASTHEAD)
 class Masthead(Resource):
     def get(self):
-        return {USER_GET_MASTHEAD_RESP: usr.get_masthead()}
+        return create_response('Masthead', usr.get_masthead())
 
 
 USER_READ_SINGLE_EP = '/user/read_single'
@@ -445,7 +431,7 @@ class UserReadSingle(Resource):
                 raise wz.NotFound(f'User with email {email} not found.')
             return {USER_READ_RESP: user}
         except Exception as err:
-            raise wz.NotFound(f'Error reading user: {err}')
+            handle_request_error('read user', err, wz.NotFound)
 
 
 TEXT_READ_ALL_EP = '/text/read_all'
@@ -464,4 +450,4 @@ class TextReadAll(Resource):
         try:
             return {TEXT_READ_RESP: txt.text_dict}
         except Exception as err:
-            raise wz.ServiceUnavailable(f'Error reading texts: {err}')
+            handle_request_error('read texts', err, wz.ServiceUnavailable)
