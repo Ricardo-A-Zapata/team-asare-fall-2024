@@ -45,3 +45,21 @@ def test_fetch_one_with_duplicates(mock_mongo):
     assert result is not None
     assert result["TEST_NAME"] == "TEST"
     assert result["TEST_VALUE"] == 123
+
+def test_connect_db_cloud_env(mock_mongo, monkeypatch):
+    monkeypatch.setenv("CLOUD_MONGO", "1")
+    monkeypatch.setenv("JOURNAL_DB_PW", "test_password")
+    monkeypatch.setenv("MONGO_USERNAME", "test_user")
+    monkeypatch.setenv("MONGO_CLUSTER", "test_cluster.mongodb.net")
+    db.client = None
+    db.connect_db()
+    assert db.client is not None
+    assert isinstance(db.client, mongomock.MongoClient)
+
+def test_fetch_all(mock_mongo):
+    db.insert_one(TEST_COLLECTION, {"TEST_NAME": "DOC1", "TEST_VALUE": 1})
+    db.insert_one(TEST_COLLECTION, {"TEST_NAME": "DOC2", "TEST_VALUE": 2})
+    result = db.fetch_all(TEST_COLLECTION)
+    assert len(result) == 2
+    assert any(doc["TEST_NAME"] == "DOC1" for doc in result)
+    assert any(doc["TEST_NAME"] == "DOC2" for doc in result)
