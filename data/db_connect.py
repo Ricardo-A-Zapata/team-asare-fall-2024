@@ -5,7 +5,7 @@ import pymongo as pm
 LOCAL = "0"
 CLOUD = "1"
 
-GAME_DB = 'gamesDB'
+JOURNAL_DB = 'teamasare'
 USERS_COLLECTION = 'users'
 
 client = None
@@ -25,14 +25,16 @@ def connect_db():
     if client is None:  # not connected yet!
         print("Setting client because it is None.")
         if os.environ.get("CLOUD_MONGO", LOCAL) == CLOUD:
-            password = os.environ.get("GAME_MONGO_PW")
+            password = os.environ.get("JOURNAL_DB_PW")
             if not password:
                 raise ValueError('You must set your password '
                                  + 'to use Mongo in the cloud.')
             print("Connecting to Mongo in the cloud.")
-            client = pm.MongoClient(f'mongodb+srv://gcallah:{password}'
-                                    + '@koukoumongo1.yud9b.mongodb.net/'
-                                    + '?retryWrites=true&w=majority')
+            client = pm.MongoClient(f'mongodb+srv://teamasare:{password}'
+                                    + '@cluster0.ib3jg.mongodb.net/?'
+                                    + 'retryWrites=true&w='
+                                    + 'majority&appName=Cluster0')
+
         else:
             print("Connecting to Mongo locally.")
             client = pm.MongoClient()
@@ -43,7 +45,7 @@ def convert_mongo_id(doc: dict):
         doc[MONGO_ID] = str(doc[MONGO_ID])
 
 
-def insert_one(collection, doc, db=GAME_DB):
+def insert_one(collection, doc, db=JOURNAL_DB):
     """
     Insert a single doc into collection.
     """
@@ -51,7 +53,7 @@ def insert_one(collection, doc, db=GAME_DB):
     return client[db][collection].insert_one(doc)
 
 
-def fetch_one(collection, filt, db=GAME_DB):
+def fetch_one(collection, filt, db=JOURNAL_DB):
     """
     Find with a filter and return on the first doc found.
     Return None if not found.
@@ -63,25 +65,25 @@ def fetch_one(collection, filt, db=GAME_DB):
         return doc
 
 
-def del_one(collection, filt, db=GAME_DB):
+def del_one(collection, filt, db=JOURNAL_DB):
     """
     Find with a filter and return on the first doc found.
     """
     client[db][collection].delete_one(filt)
 
 
-def update_doc(collection, filters, update_dict, db=GAME_DB):
+def update_doc(collection, filters, update_dict, db=JOURNAL_DB):
     return client[db][collection].update_one(filters, {'$set': update_dict})
 
 
-def fetch_all(collection, db=GAME_DB):
+def fetch_all(collection, db=JOURNAL_DB):
     ret = []
     for doc in client[db][collection].find():
         ret.append(doc)
     return ret
 
 
-def fetch_all_as_dict(key, collection, db=GAME_DB):
+def fetch_all_as_dict(key, collection, db=JOURNAL_DB):
     ret = {}
     for doc in client[db][collection].find():
         del doc[MONGO_ID]

@@ -3,8 +3,8 @@
 
 echo "Importing from common.sh"
 
-DB=gamesDB
-USER=gcallah
+DB=journalDB
+USER=teamasare
 CONNECT_STR="mongodb+srv://koukoumongo1.yud9b.mongodb.net/"
 if [ -z $DATA_DIR ]
 then

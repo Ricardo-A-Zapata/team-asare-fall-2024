@@ -17,7 +17,7 @@ def mock_mongo():
     with mock.patch("pymongo.MongoClient", return_value=mongomock.MongoClient()):
         db.connect_db()
         # Clean up any existing test collection
-        db.client[db.GAME_DB][TEST_COLLECTION].drop()
+        db.client[db.JOURNAL_DB][TEST_COLLECTION].drop()
         yield db.client
 
 def test_insert_one(mock_mongo):

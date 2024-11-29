@@ -18,14 +18,14 @@ def setup_test_db():
     Set up test database before each test and clean up after
     """
     # Setup
-    dbc.client[dbc.GAME_DB][usrs.TEST_COLLECTION].drop()
+    dbc.client[dbc.JOURNAL_DB][usrs.TEST_COLLECTION].drop()
     # Create test user
     usrs.create('Eugene Callahan', usrs.TEST_EMAIL, 'NYU', testing=True)
     
     yield
     
     # Teardown
-    dbc.client[dbc.GAME_DB][usrs.TEST_COLLECTION].drop()
+    dbc.client[dbc.JOURNAL_DB][usrs.TEST_COLLECTION].drop()
 
 
 def test_read():
