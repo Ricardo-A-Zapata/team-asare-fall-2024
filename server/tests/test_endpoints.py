@@ -132,34 +132,37 @@ def test_create_text():
         # Clean up
         TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{ep.TEST_CREATE_TEXT["key"]}')
 
-
-def test_duplicate_text():
-    try:
-        # First creation should succeed
-        resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=ep.TEST_CREATE_TEXT)
-        assert resp.status_code == OK
+@pytest.fixture()
+def test_text():
+    """
+    Setup a test client before each test.
+    This fixture also configures the app for testing.
+    """
+    resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=ep.TEST_CREATE_TEXT)
+    if resp.status_code == OK:
+        yield resp
+    else:
+        raise Exception("Could not create test text")
+    TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{ep.TEST_CREATE_TEXT["key"]}')
+    
+def test_duplicate_text(test_text):
+    # First creation should succeed
+    assert test_text.status_code == OK
+    
+    # Second creation should fail
+    resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=ep.TEST_CREATE_TEXT)
+    assert resp.status_code == NOT_ACCEPTABLE
         
-        # Second creation should fail
-        resp = TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=ep.TEST_CREATE_TEXT)
-        assert resp.status_code == NOT_ACCEPTABLE
-    finally:
-        # Clean up
-        TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{ep.TEST_CREATE_TEXT["key"]}')
 
-
-def test_read_text():
-    test_text = {
-        "key": "read_test_key",
-        "title": "Read Test Title",
-        "text": "This is a test text for reading."
-    }
-    TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
-    resp = TEST_CLIENT.get(f'{ep.TEXT_READ_EP}/{test_text["key"]}')
+def test_read_text(test_text):
+    assert test_text.status_code == OK
+    # Tests reading the recently created text
+    resp = TEST_CLIENT.get(f'{ep.TEXT_READ_EP}/{ep.TEST_CREATE_TEXT["key"]}')
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.TEXT_READ_RESP in resp_json
-    assert resp_json[ep.TEXT_READ_RESP]['title'] == test_text['title']
-    assert resp_json[ep.TEXT_READ_RESP]['text'] == test_text['text']
+    assert resp_json[ep.TEXT_READ_RESP]['title'] == ep.TEST_CREATE_TEXT['title']
+    assert resp_json[ep.TEXT_READ_RESP]['text'] == ep.TEST_CREATE_TEXT['text']
 
 
 def test_delete_text():
@@ -180,19 +183,9 @@ def test_delete_text():
     assert resp.status_code == NOT_FOUND
 
 
-def test_update_text():
-    test_text = {
-        "key": "update_test_key",
-        "title": "Update Test Title",
-        "text": "This is a test text for updating."
-    }
-    TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
-
-    updated_text = {
-        "key": "update_test_key",
-        "title": "Updated Title",
-        "text": "This text has been updated."
-    }
+def test_update_text(test_text):
+    updated_text = {i:j for i,j in ep.TEST_CREATE_TEXT.items()}
+    updated_text['Title'] = "New Value"
     resp = TEST_CLIENT.put(ep.TEXT_UPDATE_EP, json=updated_text)
     assert resp.status_code == OK
     assert resp.json[ep.TEXT_UPDATE_RESP] == 'Text entry updated successfully'
@@ -203,6 +196,8 @@ def test_update_text():
     assert resp_json[ep.TEXT_READ_RESP]['title'] == updated_text['title']
     assert resp_json[ep.TEXT_READ_RESP]['text'] == updated_text['text']
 
+    # Changes item back to original to allow for proper destruction
+    TEST_CLIENT.put(ep.TEXT_UPDATE_EP, json=ep.TEST_CREATE_TEXT)
 
 def test_update_nonexistent_text():
     nonexistent_text = {
