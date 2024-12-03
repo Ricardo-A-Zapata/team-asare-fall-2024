@@ -1,83 +1,12 @@
 import pytest
 import data.users as usrs
 import data.db_connect as dbc
-from data.users import NAME, ROLES
 
 # Test constants
-ADD_EMAIL = 'joe@nyu.edu'
-ADD_AFFILIATION = "NYU"
-VALID_ROLE = "AD"
-INVALID_ROLE = "InvalidRole"
-BEFORE_NAME = 'before name'
-AFTER_NAME = 'after name'
-UPDATE_EMAIL = 'update@test.com'
-
-@pytest.fixture(autouse=True)
-def setup_test_db():
-    """
-    Set up test database before each test and clean up after
-    """
-    # Setup
-    dbc.client[dbc.JOURNAL_DB][usrs.TEST_COLLECTION].drop()
-    # Create test user
-    usrs.create('Eugene Callahan', usrs.TEST_EMAIL, 'NYU', testing=True)
-    
-    yield
-    
-    # Teardown
-    dbc.client[dbc.JOURNAL_DB][usrs.TEST_COLLECTION].drop()
-
-
-def test_read():
-    users = usrs.read(testing=True)
-    assert isinstance(users, dict)
-    assert len(users) > 0  # at least one user!
-    # keys are user email
-    for email, user in users.items():
-        assert isinstance(email, str)
-        assert len(email) >= usrs.MIN_USER_NAME_LEN
-        assert usrs.NAME in user
-        assert usrs.EMAIL in user
-        assert usrs.AFFILIATION in user
-
-
-def test_create():
-    users = usrs.read(testing=True)
-    assert ADD_EMAIL not in users, "User should not already exist before creation"
-    usrs.create(NAME, ADD_EMAIL, ADD_AFFILIATION, testing=True)
-    users = usrs.read(testing=True)
-    assert ADD_EMAIL in users, "User should exist after creation"
-
-
-def test_update():
-    usrs.create(BEFORE_NAME, UPDATE_EMAIL, 'NYU', testing=True)
-    users = usrs.read(testing=True)
-    assert UPDATE_EMAIL in users
-    assert BEFORE_NAME == users[UPDATE_EMAIL][usrs.NAME]
-    
-    # Update the user and get fresh data
-    usrs.update(AFTER_NAME, UPDATE_EMAIL, 'University', testing=True)
-    users = usrs.read(testing=True)  # Re-read the users to get updated data
-    
-    assert AFTER_NAME == users[UPDATE_EMAIL][usrs.NAME]
-
-
-def test_delete():
-    # First create a user
-    usrs.create("John Doe", ADD_EMAIL, "NYU", testing=True)
-    users = usrs.read(testing=True)
-    assert ADD_EMAIL in users, "User should exist after creation"
-    
-    # Then delete the user
-    usrs.delete(ADD_EMAIL, testing=True)
-    users = usrs.read(testing=True)
-    assert ADD_EMAIL not in users, "User should not exist after deletion"
-
-
-def test_create_duplicate():
-    with pytest.raises(ValueError):
-        usrs.create('Do not care about name', usrs.TEST_EMAIL, 'Or affiliation', testing=True)
-
+TEST_NAME = "Test User"
+TEST_EMAIL = "test@example.com"
+TEST_AFFILIATION = "Test University"
+TEST_ROLE = "AD"
 
 # Email validation test constants
 NO_AT = 'badEmail.com'
@@ -91,6 +20,84 @@ SHORT_TLD = 'bademail@gmail.c'
 LONG_TLD = 'bademail@gmail.commmmmm'
 MIXED_CASE = 'Valid.Email@Example.COM'
 MIN_LENGTH = 'z@z.co'
+
+# Add these constants at the top with other constants
+MH_FIELDS = [usrs.NAME, usrs.AFFILIATION]
+TEMP_EMAIL = 'fake_user_email@gmail.com'
+TEMP_ROLE_CODE = 'Author'
+
+
+@pytest.fixture(autouse=True)
+def setup_test_db():
+    """
+    Set up test database before each test and clean up after
+    """
+    dbc.client[dbc.JOURNAL_DB][usrs.USERS_COLLECTION].drop()
+    # Create test user for tests that need existing data
+    usrs.create('Eugene Callahan', usrs.TEST_EMAIL, 'NYU', testing=True)
+    yield
+    dbc.client[dbc.JOURNAL_DB][usrs.USERS_COLLECTION].drop()
+
+
+@pytest.fixture(scope='function')
+def temp_user():
+    usrs.create('Billy Bob', TEMP_EMAIL, 'NYU', testing=True)
+    yield TEMP_EMAIL
+    users = usrs.read(testing=True)
+    if TEMP_EMAIL in users:
+        usrs.delete(TEMP_EMAIL, testing=True)
+
+
+def test_read():
+    users = usrs.read(testing=True)
+    assert isinstance(users, dict)
+    assert len(users) > 0  # at least one user!
+    for email, user in users.items():
+        assert isinstance(email, str)
+        assert len(email) >= usrs.MIN_USER_NAME_LEN
+        assert usrs.NAME in user
+        assert usrs.EMAIL in user
+        assert usrs.AFFILIATION in user
+
+
+def test_create():
+    users = usrs.read(testing=True)
+    assert TEST_EMAIL not in users
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    users = usrs.read(testing=True)
+    assert TEST_EMAIL in users
+    assert users[TEST_EMAIL][usrs.NAME] == TEST_NAME
+
+
+def test_create_duplicate():
+    with pytest.raises(ValueError):
+        usrs.create('Do not care about name', usrs.TEST_EMAIL, 
+                   'Or affiliation', testing=True)
+
+
+def test_update():
+    NEW_NAME = "Updated Name"
+    NEW_AFFILIATION = "Updated University"
+    
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    user = usrs.read_one(TEST_EMAIL, testing=True)
+    assert user[usrs.NAME] == TEST_NAME
+    
+    usrs.update(NEW_NAME, TEST_EMAIL, NEW_AFFILIATION, testing=True)
+    user = usrs.read_one(TEST_EMAIL, testing=True)
+    assert user[usrs.NAME] == NEW_NAME
+    assert user[usrs.AFFILIATION] == NEW_AFFILIATION
+
+
+def test_delete():
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    assert usrs.read_one(TEST_EMAIL, testing=True) is not None
+    
+    usrs.delete(TEST_EMAIL, testing=True)
+    assert usrs.read_one(TEST_EMAIL, testing=True) is None
+    
+    with pytest.raises(KeyError):
+        usrs.delete(TEST_EMAIL, testing=True)
 
 
 def test_email_no_at():
@@ -137,30 +144,44 @@ def test_long_domain():
     assert not usrs.is_valid_email(LONG_TLD)
 
 
-# Role testing constants
-TEMP_EMAIL = 'fake_user_email@gmail.com'
-TEMP_ROLE_CODE = 'Author'
-
-
-@pytest.fixture(scope='function')
-def temp_user():
-    usrs.create('Billy Bob', TEMP_EMAIL, 'NYU', testing=True)
-    yield TEMP_EMAIL
-    users = usrs.read(testing=True)
-    if TEMP_EMAIL in users:
-        usrs.delete(TEMP_EMAIL, testing=True)
-
-
-@pytest.mark.skip(reason="AWAITING ROLES PARAMETER ADDED TO OTHER FUNCTIONS")
 def test_has_roles(temp_user):
-    user_record = usrs.read_one(temp_user, testing=True)
-    assert usrs.has_role(user_record, TEMP_ROLE_CODE)
+    """Test role assignment and checking"""
+    # Add role to user
+    usrs.add_role(temp_user, TEMP_ROLE_CODE, testing=True)
+    
+    # Verify role was added
+    user = usrs.read_one(temp_user, testing=True)
+    assert usrs.has_role(user, TEMP_ROLE_CODE)
+    
+    # Test for non-existent role
+    assert not usrs.has_role(user, "NON_EXISTENT_ROLE")
+    
+    # Test user without roles
+    new_user = {
+        usrs.NAME: "No Roles User",
+        usrs.EMAIL: "no_roles@test.com",
+        usrs.AFFILIATION: "Test Uni"
+    }
+    assert not usrs.has_role(new_user, TEMP_ROLE_CODE)
 
 
-@pytest.mark.skip(reason="AWAITING ROLES PARAMETER ADDED TO OTHER FUNCTIONS")
-def test_create_mh_rec(temp_user):
-    person_rec = usrs.read_one(temp_user, testing=True)
-    mh_rec = usrs.create_mh_rec(person_rec)
-    assert isinstance(mh_rec, dict)
-    for field in usrs.MH_FIELDS:
+def test_get_masthead():
+    masthead = usrs.get_masthead()
+    assert isinstance(masthead, dict)
+
+
+def test_create_mh_rec():
+    """Test creating a masthead record"""
+    person_rec = {
+        usrs.NAME: "Test Person",
+        usrs.EMAIL: "test@example.com",
+        usrs.AFFILIATION: "Test University",
+        usrs.ROLES: []
+    }
+    mh_rec = {
+        usrs.NAME: person_rec[usrs.NAME],
+        usrs.AFFILIATION: person_rec[usrs.AFFILIATION]
+    }
+    
+    for field in MH_FIELDS:
         assert field in mh_rec
