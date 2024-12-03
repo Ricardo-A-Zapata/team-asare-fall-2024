@@ -250,7 +250,8 @@ class TextCreate(Resource):
             key = request.json.get(txt.KEY)
             title = request.json.get(txt.TITLE)
             text = request.json.get(txt.TEXT)
-            ret = txt.create(key, title, text)
+            testing = current_app.config.get(TESTING, False)
+            ret = txt.create(key, title, text, testing=testing)
             return {TEXT_CREATE_RESP: 'Text entry created!', RETURN: ret}
         except Exception as err:
             handle_request_error('create text entry', err)
@@ -272,15 +273,13 @@ class TextDelete(Resource):
         Delete a text entry by its key.
         """
         try:
-            ret = txt.delete(key)
-            if not ret:
-                raise wz.NotFound(f'Text entry with key "{key}" not found.')
+            testing = current_app.config.get(TESTING, False)
+            ret = txt.delete(key, testing=testing)
+            return {TEXT_DELETE_RESP: 'Text entry deleted!', RETURN: ret}
+        except KeyError:
+            raise wz.NotFound(f'Text entry with key "{key}" not found.')
         except Exception as err:
-            handle_request_error('delete text entry', err, wz.NotFound)
-        return {
-            TEXT_DELETE_RESP: 'Text entry deleted!',
-            RETURN: ret,
-        }
+            handle_request_error('delete text entry', err)
 
 
 @api.route(f'{TEXT_READ_EP}/<string:key>')
@@ -295,14 +294,13 @@ class TextRead(Resource):
         Retrieve a text entry by key.
         """
         try:
-            txt_entry = txt.read_one(key)
+            testing = current_app.config.get(TESTING, False)
+            txt_entry = txt.read_one(key, testing=testing)
             if not txt_entry:
                 raise wz.NotFound(f'No text found for key:{key}')
+            return {TEXT_READ_RESP: txt_entry}
         except Exception as err:
             handle_request_error('read text', err, wz.NotFound)
-        return {
-            TEXT_READ_RESP: txt_entry
-        }
 
 
 @api.route(TEXT_UPDATE_EP)
@@ -321,12 +319,13 @@ class TextUpdate(Resource):
             key = request.json.get(txt.KEY)
             title = request.json.get(txt.TITLE)
             text = request.json.get(txt.TEXT)
-            if key not in txt.text_dict:
+            testing = current_app.config.get(TESTING, False)
+            ret = txt.update(key, title, text, testing=testing)
+            if not ret:
                 raise wz.NotAcceptable(f'No text found for key: {key}')
-            ret = txt.update(key, title, text)
             return {
-                    TEXT_UPDATE_RESP: 'Text entry updated successfully',
-                    RETURN: ret
+                TEXT_UPDATE_RESP: 'Text entry updated successfully',
+                RETURN: ret
                 }
         except Exception as err:
             handle_request_error('update text entry', err)
@@ -448,6 +447,7 @@ class TextReadAll(Resource):
         Retrieve all text entries.
         """
         try:
-            return {TEXT_READ_RESP: txt.text_dict}
+            testing = current_app.config.get(TESTING, False)
+            return {TEXT_READ_RESP: txt.read(testing=testing)}
         except Exception as err:
             handle_request_error('read texts', err, wz.ServiceUnavailable)
