@@ -2,6 +2,7 @@
 This module manages person roles for a journal.
 """
 from copy import deepcopy
+import data.db_connect as dbc
 
 AUTHOR_CODE = 'AU'
 EDITOR_CODE = 'ED'
@@ -13,66 +14,116 @@ ROLES = {
     REFEREE_CODE: 'Referee',
 }
 MH_ROLES = [AUTHOR_CODE, EDITOR_CODE]
+ROLES_COLLECTION = 'roles'
 
 
-def create(code: str, role: str) -> bool:
+dbc.connect_db()
+
+
+def create(code: str, role: str, testing=False) -> bool:
     """
-    Create a new role.
+    Create a new role in MongoDB.
     """
-    if code in ROLES:
-        raise ValueError(f"Role with code '{code}' already exists.")
-    ROLES[code] = role
-    return True
+    try:
+        if dbc.fetch_one(ROLES_COLLECTION, {"code": code}, testing=testing):
+            raise ValueError(f"Role with code '{code}' already exists.")
+        
+        role_doc = {
+            "code": code,
+            "role": role
+        }
+        dbc.insert_one(ROLES_COLLECTION, role_doc, testing=testing)
+        return True
+    except Exception as e:
+        print(f"Error in create: {str(e)}")
+        return False
 
 
 def get_roles() -> dict:
-    return deepcopy(ROLES)
+    """
+    Get all roles from MongoDB as a dictionary.
+    """
+    roles = {}
+    try:
+        all_roles = dbc.fetch_all(ROLES_COLLECTION)
+        for role in all_roles:
+            roles[role["code"]] = role["role"]
+        return roles
+    except Exception as e:
+        print(f"Error in get_roles: {str(e)}")
+        return roles
 
 
 def get_masthead_roles() -> dict:
-    mh_roles = get_roles()
-    del_mh_roles = []
-    for role in mh_roles:
-        if role not in MH_ROLES:
-            del_mh_roles.append(role)
-    for del_role in del_mh_roles:
-        del mh_roles[del_role]
-    return mh_roles
+    """
+    Get masthead roles (filtered subset of all roles).
+    """
+    masthead_roles = {}
+    try:
+        all_roles = get_roles()
+        for code, role in all_roles.items():
+            if code in MH_ROLES:
+                masthead_roles[code] = role
+        return masthead_roles
+    except Exception as e:
+        print(f"Error in get_masthead_roles: {str(e)}")
+        return masthead_roles
 
 
 def read_one(code: str) -> str:
     """
-    Read a specific role by code.
+    Read a specific role by its code from MongoDB.
     """
-    return ROLES.get(code)
+    try:
+        role = dbc.fetch_one(ROLES_COLLECTION, {"code": code})
+        return role["role"] if role else None
+    except Exception as e:
+        print(f"Error in read_one: {str(e)}")
+        return None
 
 
 def is_valid(code: str) -> bool:
-    return code in ROLES
+    """
+    Check if a role code is valid (exists in MongoDB).
+    """
+    return read_one(code) is not None
 
 
 def update(code: str, new_role: str) -> bool:
     """
-    update existing role
+    Update an existing role in MongoDB.
     """
-    if code not in ROLES:
-        raise ValueError(f"Role with code '{code}' does not exist.")
-    ROLES[code] = new_role
-    return True
+    try:
+        if not read_one(code):
+            raise ValueError(f"Role with code '{code}' does not exist.")
+        
+        return bool(dbc.update_doc(ROLES_COLLECTION, {"code": code}, {"role": new_role}))
+    except Exception as e:
+        print(f"Error in update: {str(e)}")
+        return False
 
 
 def delete(code: str) -> bool:
     """
-    Delete a role.
+    Delete a role by its code from MongoDB.
     """
-    if code not in ROLES:
+    try:
+        if not read_one(code):
+            return False
+        dbc.del_one(ROLES_COLLECTION, {"code": code})
+        return True
+    except Exception as e:
+        print(f"Error in delete: {str(e)}")
         return False
-    del ROLES[code]
-    return True
 
 
 def list_role_codes() -> list:
     """
-    Return a list of all role codes.
+    Return a list of all role codes from MongoDB.
     """
-    return list(ROLES.keys())
+    try:
+        roles = dbc.fetch_all(ROLES_COLLECTION)
+        return [role["code"] for role in roles]
+    except Exception as e:
+        print(f"Error in list_role_codes: {str(e)}")
+        return []
