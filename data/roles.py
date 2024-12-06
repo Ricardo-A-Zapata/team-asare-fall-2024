@@ -1,21 +1,20 @@
 """
 This module manages person roles for a journal.
 """
-from copy import deepcopy
 import data.db_connect as dbc
 
+# Constants
 AUTHOR_CODE = 'AU'
 EDITOR_CODE = 'ED'
 REFEREE_CODE = 'RE'
-TEST_CODE = AUTHOR_CODE
+ROLES_COLLECTION = 'roles'
+TEST_CODE = 'TR'
 ROLES = {
     AUTHOR_CODE: 'Author',
     EDITOR_CODE: 'Editor',
     REFEREE_CODE: 'Referee',
 }
 MH_ROLES = [AUTHOR_CODE, EDITOR_CODE]
-ROLES_COLLECTION = 'roles'
-
 
 dbc.connect_db()
 
@@ -27,31 +26,68 @@ def create(code: str, role: str, testing=False) -> bool:
     try:
         if dbc.fetch_one(ROLES_COLLECTION, {"code": code}, testing=testing):
             raise ValueError(f"Role with code '{code}' already exists.")
-        
-        role_doc = {
-            "code": code,
-            "role": role
-        }
+        role_doc = {"code": code, "role": role}
         dbc.insert_one(ROLES_COLLECTION, role_doc, testing=testing)
         return True
     except Exception as e:
         print(f"Error in create: {str(e)}")
-        return False
+        raise e
 
 
-def get_roles() -> dict:
+def get_roles(testing=False) -> dict:
     """
     Get all roles from MongoDB as a dictionary.
     """
     roles = {}
     try:
-        all_roles = dbc.fetch_all(ROLES_COLLECTION)
+        all_roles = dbc.fetch_all(ROLES_COLLECTION, testing=testing)
         for role in all_roles:
             roles[role["code"]] = role["role"]
         return roles
     except Exception as e:
         print(f"Error in get_roles: {str(e)}")
-        return roles
+        return {}
+
+
+def read_one(code: str, testing=False) -> str:
+    """
+    Read a specific role by its code from MongoDB.
+    """
+    try:
+        role = dbc.fetch_one(ROLES_COLLECTION, {"code": code}, testing=testing)
+        return role["role"] if role else None
+    except Exception as e:
+        print(f"Error in read_one: {str(e)}")
+        return None
+
+
+def update(code: str, new_role: str, testing=False) -> bool:
+    """
+    Update an existing role in MongoDB.
+    """
+    try:
+        if not read_one(code, testing=testing):
+            raise ValueError(f"Role with code '{code}' does not exist.")
+        return bool(dbc.update_doc(
+            ROLES_COLLECTION, {"code": code}, {"role": new_role},
+            testing=testing))
+    except Exception as e:
+        print(f"Error in update: {str(e)}")
+        raise e
+
+
+def delete(code: str, testing=False) -> bool:
+    """
+    Delete a role by its code from MongoDB.
+    """
+    try:
+        if not read_one(code, testing=testing):
+            return False
+        dbc.del_one(ROLES_COLLECTION, {"code": code}, testing=testing)
+        return True
+    except Exception as e:
+        print(f"Error in delete: {str(e)}")
+        raise e
 
 
 def get_masthead_roles() -> dict:
@@ -70,60 +106,13 @@ def get_masthead_roles() -> dict:
         return masthead_roles
 
 
-def read_one(code: str) -> str:
+def is_valid(code: str, testing=False) -> bool:
     """
-    Read a specific role by its code from MongoDB.
-    """
-    try:
-        role = dbc.fetch_one(ROLES_COLLECTION, {"code": code})
-        return role["role"] if role else None
-    except Exception as e:
-        print(f"Error in read_one: {str(e)}")
-        return None
-
-
-def is_valid(code: str) -> bool:
-    """
-    Check if a role code is valid (exists in MongoDB).
-    """
-    return read_one(code) is not None
-
-
-def update(code: str, new_role: str) -> bool:
-    """
-    Update an existing role in MongoDB.
+    Check if a role with the given code exists in MongoDB.
     """
     try:
-        if not read_one(code):
-            raise ValueError(f"Role with code '{code}' does not exist.")
-        
-        return bool(dbc.update_doc(ROLES_COLLECTION, {"code": code}, {"role": new_role}))
+        return (dbc.fetch_one(ROLES_COLLECTION, {"code": code},
+                              testing=testing) is not None)
     except Exception as e:
-        print(f"Error in update: {str(e)}")
+        print(f"Error in is_valid: {str(e)}")
         return False
-
-
-def delete(code: str) -> bool:
-    """
-    Delete a role by its code from MongoDB.
-    """
-    try:
-        if not read_one(code):
-            return False
-        dbc.del_one(ROLES_COLLECTION, {"code": code})
-        return True
-    except Exception as e:
-        print(f"Error in delete: {str(e)}")
-        return False
-
-
-def list_role_codes() -> list:
-    """
-    Return a list of all role codes from MongoDB.
-    """
-    try:
-        roles = dbc.fetch_all(ROLES_COLLECTION)
-        return [role["code"] for role in roles]
-    except Exception as e:
-        print(f"Error in list_role_codes: {str(e)}")
-        return []

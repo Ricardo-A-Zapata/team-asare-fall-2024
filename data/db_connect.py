@@ -45,15 +45,14 @@ def convert_mongo_id(doc: dict):
         doc[MONGO_ID] = str(doc[MONGO_ID])
 
 
-def insert_one(collection, doc, db=JOURNAL_DB):
+def insert_one(collection, doc, db=JOURNAL_DB, testing=False):
     """
     Insert a single doc into collection.
     """
-    print(f'{db=}')
     return client[db][collection].insert_one(doc)
 
 
-def fetch_one(collection, filt, db=JOURNAL_DB):
+def fetch_one(collection, filt, db=JOURNAL_DB, testing=False):
     """
     Find with a filter and return on the first doc found.
     Return None if not found.
@@ -65,18 +64,18 @@ def fetch_one(collection, filt, db=JOURNAL_DB):
         return doc
 
 
-def del_one(collection, filt, db=JOURNAL_DB):
+def del_one(collection, filt, db=JOURNAL_DB, testing=False):
     """
     Find with a filter and return on the first doc found.
     """
     client[db][collection].delete_one(filt)
 
 
-def update_doc(collection, filters, update_dict, db=JOURNAL_DB):
+def update_doc(collection, filters, update_dict, db=JOURNAL_DB, testing=False):
     return client[db][collection].update_one(filters, {'$set': update_dict})
 
 
-def fetch_all(collection, db=JOURNAL_DB):
+def fetch_all(collection, db=JOURNAL_DB, testing=False):
     ret = []
     for doc in client[db][collection].find():
         ret.append(doc)
