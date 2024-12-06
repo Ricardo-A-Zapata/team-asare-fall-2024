@@ -75,6 +75,8 @@ TEST_CREATE_TEXT = {
     "text": "This is a test text."
 }
 
+OK = HTTPStatus.OK
+
 
 def handle_request_error(
         operation: str,
@@ -361,6 +363,8 @@ class RoleCreate(Resource):
             code = request.json['code']
             role = request.json['role']
             ret = rls.create(code, role)
+            if not ret:
+                raise wz.NotAcceptable('Role creation failed.')
             return {ROLE_CREATE_RESP: 'Role created!', RETURN: ret}
         except Exception as e:
             handle_request_error('create role', e)
@@ -386,6 +390,8 @@ class RoleUpdate(Resource):
             code = request.json['code']
             role = request.json['role']
             ret = rls.update(code, role)
+            if not ret:
+                raise wz.NotAcceptable('Role update failed.')
             return {ROLE_UPDATE_RESP: 'Role updated!', RETURN: ret}
         except Exception as e:
             handle_request_error('update role', e)
@@ -451,3 +457,18 @@ class TextReadAll(Resource):
             return {TEXT_READ_RESP: txt.read(testing=testing)}
         except Exception as err:
             handle_request_error('read texts', err, wz.ServiceUnavailable)
+
+
+ROLE_READ_ALL_EP = '/role/read_all'
+
+
+@api.route(ROLE_READ_ALL_EP)
+class RoleReadAll(Resource):
+    def get(self):
+        try:
+            roles = rls.get_roles(testing=True)
+            if not roles:
+                return {ROLE_READ_RESP: 'No Roles found'}, HTTPStatus.NOT_FOUND
+            return {ROLE_READ_RESP: roles}, OK
+        except Exception as e:
+            handle_request_error('read all roles', e)

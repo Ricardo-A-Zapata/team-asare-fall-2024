@@ -14,10 +14,14 @@ import pytest
 from data.users import NAME
 import data.text as txt
 import data.db_connect as dbc
-
+import data.roles as rls
 import server.endpoints as ep
 
 TEST_CLIENT = None
+
+# Define test constants at the top of your test file
+TEST_ROLE_CODE = "TR"
+TEST_ROLE_NAME = "Test Role"
 
 @pytest.fixture(autouse=True)
 def setup_test_client():
@@ -237,25 +241,47 @@ def test_update_nonexistent_text():
 
 
 def test_read_all_roles():
+    # Ensure the role exists before testing
+    rls.create(TEST_ROLE_CODE, TEST_ROLE_NAME, testing=True)
+    
     resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.ROLE_READ_RESP in resp_json
     assert isinstance(resp_json[ep.ROLE_READ_RESP], dict)
-    assert ep.rls.TEST_CODE in resp_json[ep.ROLE_READ_RESP]
+    assert TEST_ROLE_CODE in resp_json[ep.ROLE_READ_RESP]
+
+
+def test_read_roles():
+    # Ensure the role does not exist before testing
+    rls.delete(TEST_ROLE_CODE, testing=True)
+
+    # Ensure the role exists before testing
+    rls.create(TEST_ROLE_CODE, TEST_ROLE_NAME, testing=True)
+    
+    resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
+    assert resp.status_code == OK
+    assert ep.ROLE_READ_RESP in resp.json
+    assert isinstance(resp.json[ep.ROLE_READ_RESP], dict)
+    assert TEST_ROLE_CODE in resp.json[ep.ROLE_READ_RESP]
+
+    # Clean up
+    rls.delete(TEST_ROLE_CODE, testing=True)
 
 
 def test_create_role():
-    test_role = {
-        "code": "TR",
-        "role": "Test Role"
-    }
-    resp = TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
+    # Ensure the role does not exist before creating
+    rls.delete(TEST_ROLE_CODE, testing=True)
+
+    resp = TEST_CLIENT.post(ep.ROLE_CREATE_EP, json={
+        "code": TEST_ROLE_CODE,
+        "role": TEST_ROLE_NAME
+    })
     assert resp.status_code == OK
     assert resp.json[ep.ROLE_CREATE_RESP] == 'Role created!'
 
     # Clean up
-    TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/{test_role["code"]}')
+    TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/{TEST_ROLE_CODE}')
 
 
 def test_create_duplicate_role():
@@ -272,13 +298,6 @@ def test_create_duplicate_role():
 
     # Clean up
     TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/{test_role["code"]}')
-
-
-def test_read_roles():
-    resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
-    assert resp.status_code == OK
-    assert ep.ROLE_READ_RESP in resp.json
-    assert isinstance(resp.json[ep.ROLE_READ_RESP], dict)
 
 
 def test_read_one_role():
