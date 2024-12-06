@@ -73,6 +73,7 @@ def create_manuscript(
     # Insert into the database and extract the inserted ID
     result = db.insert_one(MANUSCRIPTS_COLLECTION, manuscript)
     manuscript['_id'] = str(result.inserted_id)
+    manuscripts[manuscript['_id']] = manuscript
     return manuscript
 
 
@@ -172,7 +173,8 @@ def delete_manuscript(manuscript_id: str) -> Optional[dict]:
     Delete a manuscript by ID.
     Returns the deleted manuscript if successful, None if not found.
     """
-    return manuscripts.pop(manuscript_id, None)
+    manuscript = manuscripts.pop(manuscript_id, None)
+    return manuscript
 
 
 def accept_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
