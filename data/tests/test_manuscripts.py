@@ -86,3 +86,22 @@ def test_update_state():
 
     # Cleanup
     ms.delete_manuscript(str(manuscript["_id"]))
+
+
+def test_delete_manuscript():
+    # Create manuscript
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    
+    # Delete manuscript
+    deleted_manuscript = ms.delete_manuscript(str(manuscript["_id"]))
+    
+    # Verify manuscript was deleted
+    assert deleted_manuscript is not None
+    assert str(manuscript["_id"]) not in ms.get_all_manuscripts()
+    
