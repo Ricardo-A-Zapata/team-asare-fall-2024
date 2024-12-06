@@ -165,7 +165,8 @@ def test_text():
         yield resp
     else:
         raise Exception("Could not create test text")
-    txt.delete(ep.TEST_CREATE_TEXT["key"], testing=True)
+    if txt.read_one(ep.TEST_CREATE_TEXT["key"]):
+        txt.delete(ep.TEST_CREATE_TEXT["key"], testing=True)
 
 
 def test_duplicate_text(test_text):
@@ -187,26 +188,18 @@ def test_read_text(test_text):
     assert resp_json[ep.TEXT_READ_RESP]['text'] == ep.TEST_CREATE_TEXT['text']
 
 
-def test_delete_text():
-    # Create text entry
-    test_text = {
-        "key": "delete_test_key",
-        "title": "Delete Test Title",
-        "text": "testing testing testing."
-    }
-    TEST_CLIENT.post(ep.TEXT_CREATE_EP, json=test_text)
-    
+def test_delete_text(test_text):    
     # Verify text exists in test DB
-    text = txt.read_one(test_text["key"], testing=True)
+    text = txt.read_one(ep.TEST_CREATE_TEXT["key"], testing=True)
     assert text is not None
     
     # Delete entry
-    resp = TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{test_text["key"]}')
+    resp = TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{ep.TEST_CREATE_TEXT["key"]}')
     assert resp.status_code == OK
     assert resp.json[ep.TEXT_DELETE_RESP] == 'Text entry deleted!'
 
     # Verify text was deleted from test DB
-    text = txt.read_one(test_text["key"], testing=True)
+    text = txt.read_one(ep.TEST_CREATE_TEXT["key"], testing=True)
     assert not text
 
     # Test deleting non-existent text
