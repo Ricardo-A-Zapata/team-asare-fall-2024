@@ -88,6 +88,13 @@ def test_delete():
     texts = txt.read(testing=True)
     assert txt.DEL_KEY not in texts
 
+def test_delete_nonexistent():
+    NE_KEY = "Non Existent Key"
+    texts = txt.read(testing=True)
+    assert NE_KEY not in texts
+    with pytest.raises(KeyError):
+        txt.delete(NE_KEY, testing=True)
+
 
 def test_create_duplicate():
     with pytest.raises(KeyError):
