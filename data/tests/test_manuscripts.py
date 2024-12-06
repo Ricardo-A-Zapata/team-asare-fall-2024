@@ -53,3 +53,36 @@ def test_get_manuscript():
 
     # Cleanup
     ms.delete_manuscript(str(manuscript["_id"]))
+
+
+def test_create_manuscript_missing_title():
+    manuscript = ms.create_manuscript(
+        title="",
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    assert manuscript[ms.TITLE] == ""
+
+
+def test_update_state():
+    # Create manuscript
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    
+    # Update state
+    new_state = ms.STATE_AUTHOR_REVISIONS
+    updated_manuscript = ms.update_state(str(manuscript["_id"]), new_state, TEST_AUTHOR_EMAIL)
+    
+    # Verify the state has been updated
+    assert updated_manuscript[ms.STATE] == new_state
+    assert updated_manuscript[ms.HISTORY][-1]['state'] == new_state
+
+    # Cleanup
+    ms.delete_manuscript(str(manuscript["_id"]))
