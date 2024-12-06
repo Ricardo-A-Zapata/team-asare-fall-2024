@@ -22,6 +22,7 @@ TEST_CLIENT = None
 # Define test constants at the top of your test file
 TEST_ROLE_CODE = "TR"
 TEST_ROLE_NAME = "Test Role"
+NE_VALUE = "NONEXISTENT VALUE"
 
 @pytest.fixture(autouse=True)
 def setup_test_client():
@@ -202,8 +203,9 @@ def test_delete_text(test_text):
     text = txt.read_one(ep.TEST_CREATE_TEXT["key"], testing=True)
     assert not text
 
+def test_delete_nonexistent_text():
     # Test deleting non-existent text
-    resp = TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/nonexistent_key')
+    resp = TEST_CLIENT.delete(f'{ep.TEXT_DELETE_EP}/{NE_VALUE}')
     assert resp.status_code == NOT_FOUND
 
 
@@ -225,7 +227,7 @@ def test_update_text(test_text):
 
 def test_update_nonexistent_text():
     nonexistent_text = {
-        "key": "nonexistent_key",
+        "key": NE_VALUE,
         "title": "Nonexistent Title",
         "text": "This text doesn't exist."
     }
@@ -333,7 +335,7 @@ def test_update_role():
 def test_update_nonexistent_role():
     updated_role = {
         "code": "NE",
-        "role": "Nonexistent Test Role"
+        "role": NE_VALUE,
     }
     resp = TEST_CLIENT.put(ep.ROLE_UPDATE_EP, json=updated_role)
     assert resp.status_code == NOT_ACCEPTABLE
@@ -353,7 +355,7 @@ def test_delete_role():
 
 
 def test_delete_nonexistent_role():
-    resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/NONEXISTENT')
+    resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/{NE_VALUE}')
     assert resp.status_code == NOT_FOUND
 
 
@@ -390,7 +392,7 @@ def test_read_single_user():
         assert resp_json[ep.USER_READ_RESP]['email'] == test['email']
 
         # Test retrieving non-existent user
-        resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/nonexistent@email.com')
+        resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/{NE_VALUE}@email.com')
         assert resp.status_code == NOT_FOUND
 
     finally:
