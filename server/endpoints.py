@@ -14,7 +14,7 @@ import werkzeug.exceptions as wz
 import data.users as usr
 import data.text as txt
 import data.roles as rls
-import data.manuscript as ms
+import data.manuscripts as ms
 
 app = Flask(__name__)
 CORS(app)
