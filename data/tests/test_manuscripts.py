@@ -125,3 +125,17 @@ def test_invalid_state_transition():
 
     # Cleanup
     ms.delete_manuscript(str(manuscript["_id"]))
+
+
+def test_get_nonexistent_manuscript():
+    # Attempt to retrieve a non-existent manuscript
+    nonexistent_id = "64d1e69e8f2b3c44b3e3d9c0"  # Random ID
+    manuscript = ms.get_manuscript(nonexistent_id)
+    assert manuscript is None
+
+
+def test_update_nonexistent_manuscript():
+    # Attempt to update a non-existent manuscript
+    nonexistent_id = "64d1e69e8f2b3c44b3e3d9c0"
+    updated_manuscript = ms.update_state(nonexistent_id, ms.STATE_REFEREE_REVIEW, TEST_AUTHOR_EMAIL)
+    assert updated_manuscript is None
