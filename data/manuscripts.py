@@ -17,8 +17,9 @@ TEXT = 'text'
 ABSTRACT = 'abstract'
 HISTORY = 'history'
 EDITOR = 'editor'
+REPORT = 'report'
+VERDICT = 'verdict'
 
-# Constants for manuscript states
 STATE_SUBMITTED = 'SUBMITTED'
 STATE_REFEREE_REVIEW = 'REFEREE_REVIEW'
 STATE_REJECTED = 'REJECTED'
@@ -30,16 +31,33 @@ STATE_FORMATTING = 'FORMATTING'
 STATE_PUBLISHED = 'PUBLISHED'
 STATE_WITHDRAWN = 'WITHDRAWN'
 
-# Constants for referee verdicts
+VALID_STATES = {
+    STATE_SUBMITTED,
+    STATE_REFEREE_REVIEW,
+    STATE_REJECTED,
+    STATE_AUTHOR_REVISIONS,
+    STATE_EDITOR_REVIEW,
+    STATE_COPY_EDIT,
+    STATE_AUTHOR_REVIEW,
+    STATE_FORMATTING,
+    STATE_PUBLISHED,
+    STATE_WITHDRAWN
+}
+
 VERDICT_ACCEPT = 'ACCEPT'
 VERDICT_ACCEPT_WITH_REVISIONS = 'ACCEPT_W_REV'
 VERDICT_REJECT = 'REJECT'
 
 # In-memory storage (will be replaced with MongoDB)
 manuscripts: Dict = {}
-MANUSCRIPTS_COLLECTION = "manuscripts"  # MongoDB collection for manuscripts
+MANUSCRIPTS_COLLECTION = "manuscripts"
 
 db.connect_db()  # connect to MongoDB
+
+
+def get_collection_name(testing=False):
+    """Return the collection name - always manuscripts"""
+    return MANUSCRIPTS_COLLECTION
 
 
 def create_manuscript(
@@ -52,38 +70,41 @@ def create_manuscript(
     """
     Create a new manuscript entry and insert it into the database.
     """
-    timestamp = datetime.now().isoformat()
-    # Construct the manuscript dictionary
-    manuscript = {
-        TITLE: title,
-        AUTHOR: author,
-        AUTHOR_EMAIL: author_email,
-        STATE: STATE_SUBMITTED,
-        REFEREES: {},
-        TEXT: text,
-        ABSTRACT: abstract,
-        HISTORY: [{
-            'state': STATE_SUBMITTED,
-            'timestamp': timestamp,
-            'actor': author_email
-        }],
-        EDITOR: None
-    }
+    try:
+        timestamp = datetime.now().isoformat()
+        manuscript = {
+            TITLE: title,
+            AUTHOR: author,
+            AUTHOR_EMAIL: author_email,
+            STATE: STATE_SUBMITTED,
+            REFEREES: {},
+            TEXT: text,
+            ABSTRACT: abstract,
+            HISTORY: [{
+                'state': STATE_SUBMITTED,
+                'timestamp': timestamp,
+                'actor': author_email
+            }],
+            EDITOR: None
+        }
 
-    # Insert into the database and extract the inserted ID
-    result = db.insert_one(MANUSCRIPTS_COLLECTION, manuscript)
-    manuscript['_id'] = str(result.inserted_id)
-    manuscripts[manuscript['_id']] = manuscript
-    return manuscript
+        collection = get_collection_name()
+        result = db.insert_one(collection, manuscript)
+        manuscript['_id'] = str(result.inserted_id)
+        return manuscript
+    except Exception as e:
+        print(f"Error in create_manuscript: {str(e)}")
+        raise e
 
 
-def get_manuscript(manuscript_id: str) -> Optional[dict]:
+def get_manuscript(manuscript_id: str, testing=False) -> Optional[dict]:
     """
     Retrieve a manuscript by ID from MongoDB.
     """
     try:
+        collection = get_collection_name(testing)
         manuscript = db.fetch_one(
-            MANUSCRIPTS_COLLECTION, {"_id": ObjectId(manuscript_id)}
+            collection, {"_id": ObjectId(manuscript_id)}
         )
         if manuscript:
             manuscript['_id'] = str(manuscript['_id'])
@@ -101,16 +122,35 @@ def update_state(
     """
     Update the state of a manuscript and record in history.
     """
-    manuscript = manuscripts.get(manuscript_id)
-    if not manuscript:
+    if new_state not in VALID_STATES:
+        print(f"Invalid state: {new_state}")
         return None
-    manuscript[STATE] = new_state
-    manuscript[HISTORY].append({
-        'state': new_state,
-        'timestamp': datetime.now().isoformat(),
-        'actor': actor_email
-    })
-    return manuscript
+
+    try:
+        manuscript = get_manuscript(manuscript_id)
+        if not manuscript:
+            return None
+
+        # Create update data without _id field
+        manuscript_id_obj = manuscript['_id']
+        del manuscript['_id']
+        manuscript[STATE] = new_state
+        manuscript[HISTORY].append({
+            'state': new_state,
+            'timestamp': datetime.now().isoformat(),
+            'actor': actor_email
+        })
+
+        # Update in database
+        db.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id_obj)},
+            manuscript
+        )
+        return get_manuscript(manuscript_id)
+    except Exception as e:
+        print(f"Error updating state: {e}")
+        return None
 
 
 def assign_editor(
@@ -120,15 +160,27 @@ def assign_editor(
     """
     Assign an editor to a manuscript.
     """
-    manuscript = manuscripts.get(manuscript_id)
+    manuscript = get_manuscript(manuscript_id)
     if not manuscript:
         return None
     manuscript[EDITOR] = editor_email
-    return manuscript
+    try:
+        db.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            manuscript
+        )
+        return get_manuscript(manuscript_id)
+    except Exception as e:
+        print(f"Error assigning editor: {e}")
+        return None
 
 
-def editor_move(manuscript_id: str, target_state: str, editor_email: str
-                ) -> Optional[dict]:
+def editor_move(
+    manuscript_id: str,
+    target_state: str,
+    editor_email: str
+) -> Optional[dict]:
     """
     Editor is able to move manuscript to any state
     """
@@ -143,11 +195,10 @@ def get_referee_verdict(manuscript_id: str) -> Optional[str]:
     """
     returns referee's verdict message.
     """
-    manuscript = manuscripts.get(manuscript_id)
+    manuscript = get_manuscript(manuscript_id)
     if manuscript and "verdict" in manuscript:
         return manuscript["verdict"]
-    else:
-        return None
+    return None
 
 
 def reject_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
@@ -161,20 +212,40 @@ def reject_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
         return {"error:", "No reject verdict"}
 
 
-def get_all_manuscripts() -> Dict:
+def get_all_manuscripts(testing=False) -> Dict:
     """
-    Get all manuscripts.
+    Get all manuscripts from database.
     """
-    return manuscripts
+    manuscripts = {}
+    try:
+        collection = get_collection_name(testing)
+        all_manuscripts = db.fetch_all(collection)
+        for manuscript in all_manuscripts:
+            if '_id' in manuscript:
+                manuscript['_id'] = str(manuscript['_id'])
+            manuscripts[manuscript['_id']] = manuscript
+        return manuscripts
+    except Exception as e:
+        print(f"Error fetching all manuscripts: {e}")
+        return manuscripts
 
 
 def delete_manuscript(manuscript_id: str) -> Optional[dict]:
     """
-    Delete a manuscript by ID.
+    Delete a manuscript by ID from database.
     Returns the deleted manuscript if successful, None if not found.
     """
-    manuscript = manuscripts.pop(manuscript_id, None)
-    return manuscript
+    try:
+        manuscript = get_manuscript(manuscript_id)
+        if manuscript:
+            db.del_one(
+                MANUSCRIPTS_COLLECTION,
+                {"_id": ObjectId(manuscript_id)}
+            )
+        return manuscript
+    except Exception as e:
+        print(f"Error deleting manuscript: {e}")
+        return None
 
 
 def accept_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
@@ -211,17 +282,181 @@ def save_manuscript(manuscript: dict) -> None:
     """
     db.insert_one(MANUSCRIPTS_COLLECTION, manuscript)
 
-def assign_new_editor(
+
+def add_referee_report(
+    manuscript_id: str,
+    referee_email: str,
+    report: str,
+    verdict: str
+) -> Optional[dict]:
+    """
+    Add a referee report to a manuscript
+    """
+    if verdict not in [
+        VERDICT_ACCEPT,
+        VERDICT_ACCEPT_WITH_REVISIONS,
+        VERDICT_REJECT
+    ]:
+        raise ValueError(f"Invalid verdict: {verdict}")
+
+    try:
+        manuscript = get_manuscript(manuscript_id)
+        if not manuscript:
+            return None
+
+        # Remove _id for update
+        manuscript_id_obj = manuscript['_id']
+        del manuscript['_id']
+
+        referees = manuscript.get(REFEREES, {})
+        referees[referee_email] = {
+            REPORT: report,
+            VERDICT: verdict
+        }
+        manuscript[REFEREES] = referees
+
+        db.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id_obj)},
+            manuscript
+        )
+        return get_manuscript(manuscript_id)
+    except Exception as e:
+        print(f"Error updating referee report: {e}")
+        return None
+
+
+def assign_referee(manuscript_id: str, referee_email: str) -> Optional[dict]:
+    """
+    Assign a referee to a manuscript
+    """
+    try:
+        manuscript = get_manuscript(manuscript_id)
+        if not manuscript:
+            return None
+
+        # Remove _id for update
+        manuscript_id_obj = manuscript['_id']
+        del manuscript['_id']
+
+        referees = manuscript.get(REFEREES, {})
+        referees[referee_email] = {}
+        manuscript[REFEREES] = referees
+
+        db.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id_obj)},
+            manuscript
+        )
+        return get_manuscript(manuscript_id)
+    except Exception as e:
+        print(f"Error assigning referee: {e}")
+        return None
+
+
+def remove_referee(manuscript_id: str, referee_email: str) -> Optional[dict]:
+    """
+    Remove a referee from a manuscript
+    """
+    try:
+        manuscript = get_manuscript(manuscript_id)
+        if not manuscript:
+            return None
+
+        # Remove _id for update
+        manuscript_id_obj = manuscript['_id']
+        del manuscript['_id']
+
+        referees = manuscript.get(REFEREES, {})
+        if referee_email in referees:
+            del referees[referee_email]
+        manuscript[REFEREES] = referees
+
+        db.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id_obj)},
+            manuscript
+        )
+        return get_manuscript(manuscript_id)
+    except Exception as e:
+        print(f"Error removing referee: {e}")
+        return None
+
+
+def submit_author_approval(
+    manuscript_id: str,
+    author_email: str
+) -> Optional[dict]:
+    """
+    Author approves changes and moves manuscript to formatting
+    """
+    manuscript = get_manuscript(manuscript_id)
+    if not manuscript or manuscript[STATE] != STATE_AUTHOR_REVIEW:
+        return None
+    return update_state(manuscript_id, STATE_FORMATTING, author_email)
+
+
+def complete_formatting(
     manuscript_id: str,
     editor_email: str
 ) -> Optional[dict]:
     """
-    Assign a new editor to the manuscript.
+    Complete formatting and move to published state
     """
     manuscript = get_manuscript(manuscript_id)
-    if manuscript:
-        manuscript[EDITOR] = editor_email
-        db.update_doc(MANUSCRIPTS_COLLECTION,
-                      {"_id": ObjectId(manuscript_id)}, manuscript)
-        return manuscript
-    return None
+    if not manuscript or manuscript[STATE] != STATE_FORMATTING:
+        return None
+    return update_state(manuscript_id, STATE_PUBLISHED, editor_email)
+
+
+def complete_copy_edit(
+    manuscript_id: str,
+    editor_email: str
+) -> Optional[dict]:
+    """
+    Complete copy editing and move to author review
+    """
+    manuscript = get_manuscript(manuscript_id)
+    if not manuscript or manuscript[STATE] != STATE_COPY_EDIT:
+        return None
+    return update_state(manuscript_id, STATE_AUTHOR_REVIEW, editor_email)
+
+
+def validate_state_transition(current_state: str, new_state: str) -> bool:
+    """
+    Validate if a state transition is allowed according to workflow rules
+    """
+    valid_transitions = {
+        STATE_SUBMITTED: {
+            STATE_REFEREE_REVIEW,
+            STATE_REJECTED,
+            STATE_WITHDRAWN
+        },
+        STATE_REFEREE_REVIEW: {
+            STATE_COPY_EDIT,
+            STATE_AUTHOR_REVISIONS,
+            STATE_REJECTED,
+            STATE_WITHDRAWN
+        },
+        STATE_AUTHOR_REVISIONS: {
+            STATE_COPY_EDIT,
+            STATE_WITHDRAWN
+        },
+        STATE_EDITOR_REVIEW: {
+            STATE_COPY_EDIT,
+            STATE_WITHDRAWN
+        },
+        STATE_COPY_EDIT: {
+            STATE_AUTHOR_REVIEW,
+            STATE_WITHDRAWN
+        },
+        STATE_AUTHOR_REVIEW: {
+            STATE_FORMATTING,
+            STATE_WITHDRAWN
+        },
+        STATE_FORMATTING: {
+            STATE_PUBLISHED,
+            STATE_WITHDRAWN
+        }
+    }
+    return new_state in valid_transitions.get(current_state, set())
