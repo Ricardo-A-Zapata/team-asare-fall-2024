@@ -104,4 +104,24 @@ def test_delete_manuscript():
     # Verify manuscript was deleted
     assert deleted_manuscript is not None
     assert str(manuscript["_id"]) not in ms.get_all_manuscripts()
+
+
+def test_invalid_state_transition():
+    # Create manuscript
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+
+    # Attempt an invalid state transition
+    invalid_state = "INVALID_STATE"
+    updated_manuscript = ms.update_state(str(manuscript["_id"]), invalid_state, TEST_AUTHOR_EMAIL)
     
+    # Verify the state has not changed
+    assert updated_manuscript is None
+
+    # Cleanup
+    ms.delete_manuscript(str(manuscript["_id"]))

@@ -121,21 +121,22 @@ def test_read_users(mock_read):
 
 
 def test_delete():
-    # Create test user first
+
     test = {
-        "name": "randomNametoTest",
+        "name": "Random Name",
         "email": "randomNametoTest@hotmail.com",
-        "affiliation": "Random Uni to Test",
+        "affiliation": "Random Uni",
     }
+
+    TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
+
     resp = TEST_CLIENT.put(ep.USERS_EP, json=test)
     assert resp.status_code == OK, "Could not create test user to delete"
 
-    # Test deletion for existing user
     resp = TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
     assert resp.status_code == OK
     assert resp.json[ep.USER_DELETE_RESP] == 'success'
 
-    # Test deletion for nonexistent user
     resp = TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
     assert resp.status_code == NOT_FOUND
 

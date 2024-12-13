@@ -18,7 +18,6 @@ ABSTRACT = 'abstract'
 HISTORY = 'history'
 EDITOR = 'editor'
 
-# Constants for manuscript states
 STATE_SUBMITTED = 'SUBMITTED'
 STATE_REFEREE_REVIEW = 'REFEREE_REVIEW'
 STATE_REJECTED = 'REJECTED'
@@ -30,7 +29,19 @@ STATE_FORMATTING = 'FORMATTING'
 STATE_PUBLISHED = 'PUBLISHED'
 STATE_WITHDRAWN = 'WITHDRAWN'
 
-# Constants for referee verdicts
+VALID_STATES = {
+    STATE_SUBMITTED,
+    STATE_REFEREE_REVIEW,
+    STATE_REJECTED,
+    STATE_AUTHOR_REVISIONS,
+    STATE_EDITOR_REVIEW,
+    STATE_COPY_EDIT,
+    STATE_AUTHOR_REVIEW,
+    STATE_FORMATTING,
+    STATE_PUBLISHED,
+    STATE_WITHDRAWN
+}
+
 VERDICT_ACCEPT = 'ACCEPT'
 VERDICT_ACCEPT_WITH_REVISIONS = 'ACCEPT_W_REV'
 VERDICT_REJECT = 'REJECT'
@@ -101,9 +112,14 @@ def update_state(
     """
     Update the state of a manuscript and record in history.
     """
+    if new_state not in VALID_STATES:
+        print(f"Invalid state: {new_state}")
+        return None
+
     manuscript = manuscripts.get(manuscript_id)
     if not manuscript:
         return None
+
     manuscript[STATE] = new_state
     manuscript[HISTORY].append({
         'state': new_state,
