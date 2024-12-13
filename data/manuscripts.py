@@ -17,6 +17,8 @@ TEXT = 'text'
 ABSTRACT = 'abstract'
 HISTORY = 'history'
 EDITOR = 'editor'
+REPORT = 'report'
+VERDICT = 'verdict'
 
 STATE_SUBMITTED = 'SUBMITTED'
 STATE_REFEREE_REVIEW = 'REFEREE_REVIEW'
@@ -143,8 +145,11 @@ def assign_editor(
     return manuscript
 
 
-def editor_move(manuscript_id: str, target_state: str, editor_email: str
-                ) -> Optional[dict]:
+def editor_move(
+    manuscript_id: str,
+    target_state: str,
+    editor_email: str
+) -> Optional[dict]:
     """
     Editor is able to move manuscript to any state
     """
@@ -226,3 +231,38 @@ def save_manuscript(manuscript: dict) -> None:
     Save a manuscript to MongoDB.
     """
     db.insert_one(MANUSCRIPTS_COLLECTION, manuscript)
+
+
+def add_referee_report(
+    manuscript_id: str,
+    referee_email: str,
+    report: str,
+    verdict: str
+) -> Optional[dict]:
+    """
+    Add a referee report to a manuscript
+    """
+    if verdict not in [
+        VERDICT_ACCEPT,
+        VERDICT_ACCEPT_WITH_REVISIONS,
+        VERDICT_REJECT
+    ]:
+        raise ValueError(f"Invalid verdict: {verdict}")
+    manuscript = get_manuscript(manuscript_id)
+    if not manuscript:
+        return None
+    manuscript[REFEREES][referee_email] = {
+        REPORT: report,
+        VERDICT: verdict
+    }
+    # Update in database
+    try:
+        db.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            manuscript
+        )
+        return manuscript
+    except Exception as e:
+        print(f"Error updating referee report: {e}")
+        return None
