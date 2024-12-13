@@ -14,6 +14,7 @@ import werkzeug.exceptions as wz
 import data.users as usr
 import data.text as txt
 import data.roles as rls
+import data.manuscript as ms
 
 app = Flask(__name__)
 CORS(app)
@@ -472,3 +473,102 @@ class RoleReadAll(Resource):
             return {ROLE_READ_RESP: roles}, OK
         except Exception as e:
             handle_request_error('read all roles', e)
+
+
+MANUSCRIPT_EP = '/manuscript'
+MANUSCRIPT_DETAIL_RESP = 'Manuscript'
+
+MANUSCRIPT_STATE_EP = '/manuscript/state'
+MANUSCRIPT_STATE_RESP = 'Manuscript State'
+
+MANUSCRIPT_REFEREE_EP = '/manuscript/referee'
+MANUSCRIPT_REFEREE_RESP = 'Manuscript Referee'
+
+STATE_FIELDS = api.model('StateFields', {
+    'state': fields.String,
+    'actor_email': fields.String,
+})
+
+REFEREE_FIELDS = api.model('RefereeFields', {
+    'referee_email': fields.String,
+})
+
+
+@api.route(f'{MANUSCRIPT_EP}/<manuscript_id>')
+class ManuscriptDetail(Resource):
+    """
+    Get details of a specific manuscript.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    def get(self, manuscript_id):
+        """
+        Get a manuscript by ID.
+        """
+        try:
+            manuscript = ms.get_manuscript(manuscript_id)
+            if not manuscript:
+                raise wz.NotFound(f'Manuscript {manuscript_id} not found.')
+            return {MANUSCRIPT_DETAIL_RESP: manuscript}
+        except Exception as e:
+            handle_request_error('get manuscript', e)
+
+
+@api.route(f'{MANUSCRIPT_STATE_EP}/<manuscript_id>')
+class ManuscriptState(Resource):
+    """
+    Update manuscript state.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    @api.expect(STATE_FIELDS)
+    def put(self, manuscript_id):
+        """
+        Update manuscript state.
+        """
+        try:
+            new_state = request.json.get('state')
+            actor_email = request.json.get('actor_email')
+            manuscript = ms.update_state(manuscript_id, new_state, actor_email)
+            if not manuscript:
+                raise wz.NotFound('State update failed.')
+            return {MANUSCRIPT_STATE_RESP: manuscript}
+        except Exception as e:
+            handle_request_error('update manuscript state', e)
+
+
+@api.route(f'{MANUSCRIPT_REFEREE_EP}/<manuscript_id>')
+class ManuscriptReferee(Resource):
+    """
+    Manage manuscript referees.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    @api.expect(REFEREE_FIELDS)
+    def put(self, manuscript_id):
+        """
+        Assign a referee to manuscript.
+        """
+        try:
+            referee_email = request.json.get('referee_email')
+            manuscript = ms.assign_referee(manuscript_id, referee_email)
+            if not manuscript:
+                raise wz.NotFound('Referee assignment failed.')
+            return {MANUSCRIPT_REFEREE_RESP: manuscript}
+        except Exception as e:
+            handle_request_error('assign referee', e)
+
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    def delete(self, manuscript_id):
+        """
+        Remove referee from manuscript.
+        """
+        try:
+            referee_email = request.args.get('referee_email')
+            manuscript = ms.remove_referee(manuscript_id, referee_email)
+            if not manuscript:
+                raise wz.NotFound('Referee removal failed.')
+            return {MANUSCRIPT_REFEREE_RESP: manuscript}
+        except Exception as e:
+            handle_request_error('remove referee', e)

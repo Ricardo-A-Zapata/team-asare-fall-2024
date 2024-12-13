@@ -1,5 +1,16 @@
 import pytest
 import data.manuscripts as ms
+import data.db_connect as dbc
+
+# Add this fixture at the top of the test file
+@pytest.fixture(autouse=True)
+def setup_test_db():
+    """
+    Set up test database before each test and clean up after
+    """
+    dbc.client[dbc.JOURNAL_DB][ms.MANUSCRIPTS_COLLECTION].drop()
+    yield
+    dbc.client[dbc.JOURNAL_DB][ms.MANUSCRIPTS_COLLECTION].drop()
 
 TEST_TITLE = "TEST TITLE"
 TEST_AUTHOR = "TEST AUTHOR"
@@ -7,28 +18,40 @@ TEST_AUTHOR_EMAIL = "test@tester.com"
 TEST_TEXT = "TEST CONTENT TEST CONTENT TEST CONTENT"
 TEST_ABSTRACT = "TEST ABSTRACT"
 
-def test_create_manuscript():
-    # Call the create_manuscript function
-    manuscript = ms.create_manuscript(
-        title=TEST_TITLE,
-        author=TEST_AUTHOR,
-        author_email=TEST_AUTHOR_EMAIL,
-        text=TEST_TEXT,
-        abstract=TEST_ABSTRACT
-    )
-    
-    # Verify the output
-    assert manuscript[ms.TITLE] == TEST_TITLE
-    assert manuscript[ms.AUTHOR] == TEST_AUTHOR
-    assert manuscript[ms.AUTHOR_EMAIL] == TEST_AUTHOR_EMAIL
-    assert manuscript[ms.STATE] == ms.STATE_SUBMITTED
-    assert manuscript[ms.HISTORY][0]['state'] == ms.STATE_SUBMITTED
-    assert manuscript[ms.HISTORY][0]['actor'] == TEST_AUTHOR_EMAIL
-    assert "_id" in manuscript  # Check that _id is present
+def test_get_collection_name():
+    """Test that collection name is consistent"""
+    assert ms.get_collection_name() == ms.MANUSCRIPTS_COLLECTION
+    assert ms.get_collection_name(testing=True) == ms.MANUSCRIPTS_COLLECTION
 
-    # Cleanup after testing
-    if "_id" in manuscript:
-        ms.delete_manuscript(manuscript["_id"])
+
+def test_create_manuscript():
+    """Test manuscript creation"""
+    try:
+        manuscript = ms.create_manuscript(
+            title=TEST_TITLE,
+            author=TEST_AUTHOR,
+            author_email=TEST_AUTHOR_EMAIL,
+            text=TEST_TEXT,
+            abstract=TEST_ABSTRACT
+        )
+        
+        assert manuscript[ms.TITLE] == TEST_TITLE
+        assert manuscript[ms.AUTHOR] == TEST_AUTHOR
+        assert manuscript[ms.AUTHOR_EMAIL] == TEST_AUTHOR_EMAIL
+        assert manuscript[ms.STATE] == ms.STATE_SUBMITTED
+        assert manuscript[ms.HISTORY][0]['state'] == ms.STATE_SUBMITTED
+        assert manuscript[ms.HISTORY][0]['actor'] == TEST_AUTHOR_EMAIL
+        assert "_id" in manuscript
+
+        # Verify in database
+        retrieved = ms.get_manuscript(manuscript["_id"])
+        assert retrieved is not None
+        assert retrieved[ms.TITLE] == TEST_TITLE
+
+    finally:
+        # Cleanup
+        if manuscript and "_id" in manuscript:
+            ms.delete_manuscript(manuscript["_id"])
 
 
 def test_get_manuscript():
@@ -139,3 +162,235 @@ def test_update_nonexistent_manuscript():
     nonexistent_id = "64d1e69e8f2b3c44b3e3d9c0"
     updated_manuscript = ms.update_state(nonexistent_id, ms.STATE_REFEREE_REVIEW, TEST_AUTHOR_EMAIL)
     assert updated_manuscript is None
+
+
+def test_assign_referee():
+    """Test assigning a referee to a manuscript"""
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    
+    referee_email = "referee@test.com"
+    updated = ms.assign_referee(str(manuscript["_id"]), referee_email)
+    
+    assert updated is not None
+    assert referee_email in updated[ms.REFEREES]
+    
+    # Cleanup
+    ms.delete_manuscript(str(manuscript["_id"]))
+
+
+def test_remove_referee():
+    """Test removing a referee from a manuscript"""
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    
+    referee_email = "referee@test.com"
+    ms.assign_referee(str(manuscript["_id"]), referee_email)
+    updated = ms.remove_referee(str(manuscript["_id"]), referee_email)
+    
+    assert updated is not None
+    assert referee_email not in updated[ms.REFEREES]
+    
+    # Cleanup
+    ms.delete_manuscript(str(manuscript["_id"]))
+
+
+def test_submit_author_approval():
+    """Test author approval submission"""
+    # Create manuscript
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    
+    manuscript_id = str(manuscript["_id"])
+    
+    # First move to AUTHOR_REVIEW state
+    ms.update_state(manuscript_id, ms.STATE_AUTHOR_REVIEW, "editor@test.com")
+    
+    # Get updated manuscript after state change
+    manuscript = ms.get_manuscript(manuscript_id)
+    assert manuscript[ms.STATE] == ms.STATE_AUTHOR_REVIEW
+    
+    # Test approval
+    updated = ms.submit_author_approval(manuscript_id, TEST_AUTHOR_EMAIL)
+    
+    assert updated is not None
+    assert updated[ms.STATE] == ms.STATE_FORMATTING
+    
+    # Cleanup
+    ms.delete_manuscript(manuscript_id)
+
+
+def test_complete_formatting():
+    """Test completing manuscript formatting"""
+    # Create manuscript
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    
+    manuscript_id = str(manuscript["_id"])
+    
+    # Move to FORMATTING state
+    ms.update_state(manuscript_id, ms.STATE_FORMATTING, "editor@test.com")
+    
+    # Get updated manuscript after state change
+    manuscript = ms.get_manuscript(manuscript_id)
+    assert manuscript[ms.STATE] == ms.STATE_FORMATTING
+    
+    # Test completing formatting
+    updated = ms.complete_formatting(manuscript_id, "editor@test.com")
+    
+    assert updated is not None
+    assert updated[ms.STATE] == ms.STATE_PUBLISHED
+    
+    # Cleanup
+    ms.delete_manuscript(manuscript_id)
+
+
+def test_complete_copy_edit():
+    """Test completing copy editing"""
+    # Create manuscript
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    
+    manuscript_id = str(manuscript["_id"])
+    
+    # Move to COPY_EDIT state
+    ms.update_state(manuscript_id, ms.STATE_COPY_EDIT, "editor@test.com")
+    
+    # Get updated manuscript after state change
+    manuscript = ms.get_manuscript(manuscript_id)
+    assert manuscript[ms.STATE] == ms.STATE_COPY_EDIT
+    
+    # Test completing copy edit
+    updated = ms.complete_copy_edit(manuscript_id, "editor@test.com")
+    
+    assert updated is not None
+    assert updated[ms.STATE] == ms.STATE_AUTHOR_REVIEW
+    
+    # Cleanup
+    ms.delete_manuscript(manuscript_id)
+
+
+def test_validate_state_transition():
+    """Test state transition validation"""
+    # Test valid transitions
+    assert ms.validate_state_transition(
+        ms.STATE_SUBMITTED, 
+        ms.STATE_REFEREE_REVIEW
+    ) is True
+    assert ms.validate_state_transition(
+        ms.STATE_REFEREE_REVIEW, 
+        ms.STATE_AUTHOR_REVISIONS
+    ) is True
+    assert ms.validate_state_transition(
+        ms.STATE_AUTHOR_REVIEW, 
+        ms.STATE_FORMATTING
+    ) is True
+    
+    # Test invalid transitions
+    assert ms.validate_state_transition(
+        ms.STATE_SUBMITTED, 
+        ms.STATE_PUBLISHED
+    ) is False
+    assert ms.validate_state_transition(
+        ms.STATE_AUTHOR_REVIEW, 
+        ms.STATE_REFEREE_REVIEW
+    ) is False
+
+
+def test_add_referee_report():
+    """Test adding a referee report"""
+    # Create manuscript
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    
+    manuscript_id = str(manuscript["_id"])
+    referee_email = "referee@test.com"
+    report = "This is a test report"
+    
+    # First assign referee
+    ms.assign_referee(manuscript_id, referee_email)
+    
+    # Test adding report with valid verdict
+    updated = ms.add_referee_report(
+        manuscript_id,
+        referee_email,
+        report,
+        ms.VERDICT_ACCEPT
+    )
+    
+    assert updated is not None
+    assert referee_email in updated[ms.REFEREES]
+    assert updated[ms.REFEREES][referee_email][ms.REPORT] == report
+    assert updated[ms.REFEREES][referee_email][ms.VERDICT] == ms.VERDICT_ACCEPT
+    
+    # Test invalid verdict
+    with pytest.raises(ValueError):
+        ms.add_referee_report(
+            manuscript_id,
+            referee_email,
+            report,
+            "INVALID_VERDICT"
+        )
+    
+    # Cleanup
+    ms.delete_manuscript(manuscript_id)
+
+
+def test_state_transitions_with_validation():
+    """Test state transitions with validation"""
+    manuscript = ms.create_manuscript(
+        title=TEST_TITLE,
+        author=TEST_AUTHOR,
+        author_email=TEST_AUTHOR_EMAIL,
+        text=TEST_TEXT,
+        abstract=TEST_ABSTRACT
+    )
+    
+    # Test complete workflow path
+    states = [
+        ms.STATE_REFEREE_REVIEW,
+        ms.STATE_AUTHOR_REVISIONS,
+        ms.STATE_COPY_EDIT,
+        ms.STATE_AUTHOR_REVIEW,
+        ms.STATE_FORMATTING,
+        ms.STATE_PUBLISHED
+    ]
+    
+    current_id = str(manuscript["_id"])
+    for state in states:
+        updated = ms.update_state(current_id, state, "editor@test.com")
+        assert updated is not None
+        assert updated[ms.STATE] == state
+        
+    # Cleanup
+    ms.delete_manuscript(current_id)
