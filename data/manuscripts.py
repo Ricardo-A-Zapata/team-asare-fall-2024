@@ -145,8 +145,11 @@ def assign_editor(
     return manuscript
 
 
-def editor_move(manuscript_id: str, target_state: str, editor_email: str
-                ) -> Optional[dict]:
+def editor_move(
+    manuscript_id: str,
+    target_state: str,
+    editor_email: str
+) -> Optional[dict]:
     """
     Editor is able to move manuscript to any state
     """
@@ -239,24 +242,26 @@ def add_referee_report(
     """
     Add a referee report to a manuscript
     """
-    if verdict not in [VERDICT_ACCEPT, VERDICT_ACCEPT_WITH_REVISIONS, 
-                      VERDICT_REJECT]:
+    if verdict not in [
+        VERDICT_ACCEPT,
+        VERDICT_ACCEPT_WITH_REVISIONS,
+        VERDICT_REJECT
+    ]:
         raise ValueError(f"Invalid verdict: {verdict}")
-        
     manuscript = get_manuscript(manuscript_id)
     if not manuscript:
         return None
-        
     manuscript[REFEREES][referee_email] = {
         REPORT: report,
         VERDICT: verdict
     }
-    
     # Update in database
     try:
-        db.update_doc(MANUSCRIPTS_COLLECTION, 
-                     {"_id": ObjectId(manuscript_id)},
-                     manuscript)
+        db.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            manuscript
+        )
         return manuscript
     except Exception as e:
         print(f"Error updating referee report: {e}")
