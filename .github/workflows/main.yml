@@ -47,8 +47,8 @@ jobs:
 
       - name: Run Python tests.
         run: make all_tests
-      # # For deployments in the future
-      # - name: Deploy to PythonAnywhere
-      #  run: ./deploy.sh
-      #  env:
-      #    DEMO_PA_PWD: ${{secrets.DEMO_PA_PWD}}
+      # For deployments in the future
+      - name: Deploy to PythonAnywhere
+       run: ./deploy.sh
+       env:
+         DEMO_PA_PWD: ${{secrets.DEMO_PA_PWD}}
