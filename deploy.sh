@@ -1,14 +1,13 @@
 #!/bin/bash
 # This shell script deploys a new version to a server.
 
-PROJ_DIR=demo-repo4
-VENV=Fall2023
-PA_DOMAIN="Fall2023.pythonanywhere.com"
-PA_USER='Fall2023'
-PA_USERNAME="teamasare"  # Your PythonAnywhere username
+PROJ_DIR=team-asare-fall-2024  # Updated project directory
+VENV=myvirtualenv  
+PA_DOMAIN="teamasare.pythonanywhere.com"
+PA_USER='teamasare'
 PA_PYTHON_VERSION="python3.9"
 PA_HOST="$PA_USERNAME.pythonanywhere.com"
-PA_API_TOKEN="$DEMO_PA_PWD"  # This comes from GitHub secrets
+PA_API_TOKEN="$DEMO_PA_PWD"  
 echo "Project dir = $PROJ_DIR"
 echo "PA domain = $PA_DOMAIN"
 echo "Virtual env = $VENV"
