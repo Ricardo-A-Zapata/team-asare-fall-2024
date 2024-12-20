@@ -25,7 +25,12 @@ def get_collection_name(testing=False):
     return USERS_COLLECTION
 
 
-def create(name: str, email: str, affiliation: str, testing=False):
+def create(
+        name: str,
+        email: str,
+        affiliation: str,
+        roles: list = None,
+        testing=False):
     """
     Create a new user in MongoDB.
     First validates the user data, then inserts if valid.
@@ -42,7 +47,7 @@ def create(name: str, email: str, affiliation: str, testing=False):
             NAME: name,
             EMAIL: email,
             AFFILIATION: affiliation,
-            ROLES: []
+            ROLES: roles if roles is not None else []
         }
         dbc.insert_one(collection, user_doc)
         return email
@@ -86,9 +91,15 @@ def read_one(email: str, testing=False):
         return None
 
 
-def update(name: str, email: str, affiliation: str, testing=False):
+def update(
+        name: str,
+        email: str,
+        affiliation: str,
+        roles: list = None,
+        testing=False):
     """
     Update an existing user in MongoDB.
+    Email serves as the unique identifier and cannot be changed.
     """
     try:
         if not is_valid_user(name, email, affiliation):
@@ -104,8 +115,14 @@ def update(name: str, email: str, affiliation: str, testing=False):
             EMAIL: email,
             AFFILIATION: affiliation,
         }
-        if ROLES in existing:
+        
+        # Only update roles if provided
+        if roles is not None:
+            update_doc[ROLES] = roles
+        elif ROLES in existing:
             update_doc[ROLES] = existing[ROLES]
+        else:
+            update_doc[ROLES] = []
 
         return bool(dbc.update_doc(collection, {EMAIL: email}, update_doc))
     except Exception as e:

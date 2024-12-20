@@ -67,6 +67,7 @@ USER_CREATE_FLDS = api.model('AddNewUserEntry', {
     usr.NAME: fields.String,
     usr.EMAIL: fields.String,
     usr.AFFILIATION: fields.String,
+    usr.ROLES: fields.List(fields.String, required=False)
 })
 
 TESTING = 'TESTING'
@@ -114,12 +115,21 @@ class UserCreate(Resource):
             name = request.json.get(usr.NAME)
             email = request.json.get(usr.EMAIL)
             affiliation = request.json.get(usr.AFFILIATION)
+            roles = request.json.get(usr.ROLES, [])
             testing = current_app.config.get(TESTING, False)
-            ret = usr.create(name, email, affiliation, testing=testing)
+            ret = usr.create(name, email, affiliation, roles, testing=testing)
             return {USERS_RESP: 'User added!', RETURN: ret}
         except Exception as err:
             handle_request_error('add user', err)
 
+
+# Add this model for user updates
+USER_UPDATE_FLDS = api.model('UpdateUserEntry', {
+    usr.NAME: fields.String,
+    usr.EMAIL: fields.String,
+    usr.AFFILIATION: fields.String,
+    usr.ROLES: fields.List(fields.String, required=False)
+})
 
 @api.route(USER_UPDATE_EP)
 class UserUpdate(Resource):
@@ -128,13 +138,18 @@ class UserUpdate(Resource):
     """
     @api.response(HTTPStatus.OK, 'Success')
     @api.response(HTTPStatus.NOT_FOUND, 'User not found')
+    @api.expect(USER_UPDATE_FLDS)
     def put(self):
+        """
+        Update a user's information including roles.
+        """
         try:
             email = request.json.get(usr.EMAIL)
             name = request.json.get(usr.NAME)
             affiliation = request.json.get(usr.AFFILIATION)
+            roles = request.json.get(usr.ROLES, [])
             testing = current_app.config.get(TESTING, False)
-            ret = usr.update(name, email, affiliation, testing=testing)
+            ret = usr.update(name, email, affiliation, roles, testing=testing)
             return {USER_UPDATE_RESP: 'Updated Successfully', RETURN: ret}
         except Exception as err:
             handle_request_error('update user', err)
@@ -572,3 +587,41 @@ class ManuscriptReferee(Resource):
             return {MANUSCRIPT_REFEREE_RESP: manuscript}
         except Exception as e:
             handle_request_error('remove referee', e)
+
+
+USER_ADD_ROLE_EP = '/user/add_role'
+USER_ADD_ROLE_RESP = 'Role added to user'
+
+ROLE_FIELDS = api.model('RoleFields', {
+    'code': fields.String,
+    'role': fields.String
+})
+
+USER_ROLE_FIELDS = api.model('UserRoleFields', {
+    'email': fields.String,
+    'role_code': fields.String
+})
+
+
+@api.route(USER_ADD_ROLE_EP)
+class UserAddRole(Resource):
+    """
+    Add a role to a user
+    """
+    @api.expect(USER_ROLE_FIELDS)
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'User not found')
+    def post(self):
+        """
+        Add a role to a user
+        """
+        try:
+            email = request.json.get('email')
+            role_code = request.json.get('role_code')
+            testing = current_app.config.get(TESTING, False)
+            ret = usr.add_role(email, role_code, testing)
+            if not ret:
+                raise wz.NotFound(f'Could not add role to user {email}')
+            return {USER_ADD_ROLE_RESP: 'Role added successfully'}
+        except Exception as e:
+            handle_request_error('add role to user', e)

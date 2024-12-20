@@ -185,3 +185,58 @@ def test_create_mh_rec():
     
     for field in MH_FIELDS:
         assert field in mh_rec
+
+
+def test_add_role():
+    """Test adding a role to a user"""
+    # Create test user
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    
+    # Add role
+    ret = usrs.add_role(TEST_EMAIL, TEST_ROLE, testing=True)
+    assert ret is True
+    
+    # Verify role was added
+    user = usrs.read_one(TEST_EMAIL, testing=True)
+    assert TEST_ROLE in user[usrs.ROLES]
+    
+    # Clean up
+    usrs.delete(TEST_EMAIL, testing=True)
+
+
+def test_update_with_roles():
+    """Test updating a user with roles"""
+    # Create test user
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    
+    # Update with roles
+    new_name = "Updated Name"
+    new_roles = [TEST_ROLE]
+    ret = usrs.update(new_name, TEST_EMAIL, TEST_AFFILIATION, new_roles, testing=True)
+    assert ret is True
+    
+    # Verify update
+    user = usrs.read_one(TEST_EMAIL, testing=True)
+    assert user[usrs.NAME] == new_name
+    assert TEST_ROLE in user[usrs.ROLES]
+    
+    # Clean up
+    usrs.delete(TEST_EMAIL, testing=True)
+
+
+def test_create_with_roles():
+    """Test creating a user with roles"""
+    roles = [TEST_ROLE]
+    
+    # Create user with roles
+    ret = usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, roles, testing=True)
+    assert ret == TEST_EMAIL
+    
+    # Verify user was created with roles
+    user = usrs.read_one(TEST_EMAIL, testing=True)
+    assert user is not None
+    assert user[usrs.NAME] == TEST_NAME
+    assert TEST_ROLE in user[usrs.ROLES]
+    
+    # Clean up
+    usrs.delete(TEST_EMAIL, testing=True)
