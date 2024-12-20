@@ -1,6 +1,31 @@
-# import pytest
-# import data.manuscripts as ms
-# import data.db_connect as dbc
+import pytest
+import data.manuscripts as ms
+import data.db_connect as dbc
+from bson import ObjectId
+
+# Connect to the database
+dbc.connect_db()
+
+def test_create_manuscript():
+    manuscript = ms.create_manuscript(
+        title="Test Manuscript",
+        author="John Doe",
+        author_email="johndoe@example.com",
+        text="Sample manuscript text",
+        abstract="Sample abstract"
+    )
+    assert manuscript is not None, "Manuscript creation failed."
+    assert "_id" in manuscript, "Manuscript does not contain an '_id' field."
+
+    # Ensure manuscripts in the database
+    manuscripts = dbc.client['teamasare']['manuscripts']
+    manuscript_in_db = manuscripts.find_one({"_id": ObjectId(manuscript["_id"])})
+    assert manuscript_in_db is not None, "Manuscript not found in the database."
+    assert "manuscripts" in dbc.client['teamasare'].list_collection_names(), "Manuscripts collection not found."
+
+    # Cleanup
+    manuscripts.delete_one({"_id": ObjectId(manuscript["_id"])})
+
 
 # # Add this fixture at the top of the test file
 # @pytest.fixture(autouse=True)

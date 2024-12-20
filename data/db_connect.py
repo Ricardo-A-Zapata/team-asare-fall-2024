@@ -6,7 +6,7 @@ LOCAL = "0"
 CLOUD = "1"
 
 JOURNAL_DB = 'teamasare'
-USERS_COLLECTION = 'users'
+
 
 client = None
 
