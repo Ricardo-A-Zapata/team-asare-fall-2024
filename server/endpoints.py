@@ -131,6 +131,7 @@ USER_UPDATE_FLDS = api.model('UpdateUserEntry', {
     usr.ROLES: fields.List(fields.String, required=False)
 })
 
+
 @api.route(USER_UPDATE_EP)
 class UserUpdate(Resource):
     """

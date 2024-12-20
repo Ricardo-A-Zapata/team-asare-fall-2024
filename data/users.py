@@ -115,7 +115,6 @@ def update(
             EMAIL: email,
             AFFILIATION: affiliation,
         }
-        
         # Only update roles if provided
         if roles is not None:
             update_doc[ROLES] = roles
