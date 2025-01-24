@@ -1,17 +1,22 @@
 import pytest
 import data.roles as rls
+import data.users as usr
 import data.db_connect as dbc
 
 # Constants for testing
-TEST_ROLE_CODE = "TR"
+TEST_ROLE_CODE = "TR"  # Unique role code for tests
 TEST_ROLE_NAME = "Test Role"
 ROLES_COLLECTION = 'roles'
 
 @pytest.fixture(autouse=True)
 def setup_test_db():
-    dbc.client[dbc.JOURNAL_DB][ROLES_COLLECTION].drop()
+    """
+    Fixture to reset the roles collection for testing, ensuring a clean slate.
+    """
+    db = dbc.client[dbc.JOURNAL_DB]
+    db[ROLES_COLLECTION].drop()  # Drop all roles, including seeds
     yield
-    dbc.client[dbc.JOURNAL_DB][ROLES_COLLECTION].drop()
+    db[ROLES_COLLECTION].drop()  # Clean up after tests
 
 def test_create():
     assert rls.create(TEST_ROLE_CODE, TEST_ROLE_NAME, testing=True)

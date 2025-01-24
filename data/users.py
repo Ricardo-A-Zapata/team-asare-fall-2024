@@ -36,13 +36,24 @@ def create(
     First validates the user data, then inserts if valid.
     """
     try:
+        # Validate user data
         if not is_valid_user(name, email, affiliation):
             raise ValueError("Invalid user data")
 
+        # Validate roles
+        if roles:
+            # Fetch valid roles from the roles collection
+            valid_roles = rls.get_roles(testing=testing)
+            for role in roles:
+                if role not in valid_roles:
+                    raise ValueError(f"Invalid role: {role}")
+
+        # Check for duplicate user
         collection = get_collection_name(testing)
         if dbc.fetch_one(collection, {EMAIL: email}):
             raise ValueError(f"User with email {email} already exists")
 
+        # Create user document
         user_doc = {
             NAME: name,
             EMAIL: email,
@@ -148,7 +159,7 @@ def delete(email: str, testing=False):
 
 def is_valid_email(email: str) -> bool:
     """Validate email format"""
-    VALID_CHARS = r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]"
+    VALID_CHARS = r"[A-Za-z0-9!#$%&'*+/=?^_{|}~.-]"
     match = re.fullmatch(
         rf'{VALID_CHARS}+@[A-Za-z0-9.-]+\.[A-Za-z]{{2,6}}', email)
     if not match:
@@ -224,4 +235,26 @@ def add_role(email: str, role: str, testing=False) -> bool:
         return True
     except Exception as e:
         print(f"Error in add_role: {str(e)}")
+        raise e
+
+
+def remove_role(email: str, role: str, testing=False) -> bool:
+    """
+    Remove a role from a user.
+    Returns True if successful, raises KeyError if user not found
+    or role does not exist.
+    """
+    try:
+        collection = get_collection_name(testing)
+        user = read_one(email, testing)
+        if not user:
+            raise KeyError(f'User with email "{email}" not found')
+
+        if ROLES not in user or role not in user[ROLES]:
+            raise ValueError(f'Role "{role}" not found for user {email}')
+
+        user[ROLES].remove(role)
+        return bool(dbc.update_doc(collection, {EMAIL: email}, user))
+    except Exception as e:
+        print(f"Error in remove_role: {str(e)}")
         raise e

@@ -66,7 +66,7 @@ def test_create():
         "name": "test_user",
         "email": "test@user.com",
         "affiliation": "Test Uni",
-        "role": ep.rls.TEST_CODE,
+        "role": "TR",
     }
     resp = TEST_CLIENT.put(ep.USERS_EP, json=test)
     assert resp.status_code == OK
@@ -236,18 +236,6 @@ def test_update_nonexistent_text():
     assert resp.status_code == NOT_ACCEPTABLE
 
 
-def test_read_all_roles():
-    # Ensure the role exists before testing
-    rls.create(TEST_ROLE_CODE, TEST_ROLE_NAME, testing=True)
-    
-    resp = TEST_CLIENT.get(ep.ROLE_READ_EP)
-    assert resp.status_code == OK
-    resp_json = resp.get_json()
-    assert ep.ROLE_READ_RESP in resp_json
-    assert isinstance(resp_json[ep.ROLE_READ_RESP], dict)
-    assert TEST_ROLE_CODE in resp_json[ep.ROLE_READ_RESP]
-
-
 def test_read_roles():
     # Ensure the role does not exist before testing
     rls.delete(TEST_ROLE_CODE, testing=True)
@@ -348,8 +336,10 @@ def test_delete_role():
         "code": "TR",
         "role": "Test Role"
     }
+    # Ensure the role exists
     TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
 
+    # Test deleting the role
     resp = TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/TR')
     assert resp.status_code == OK
     assert resp.json[ep.ROLE_DELETE_RESP] == 'Role deleted!'

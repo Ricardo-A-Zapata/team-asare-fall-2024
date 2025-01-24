@@ -8,30 +8,12 @@ AUTHOR_CODE = 'AU'
 EDITOR_CODE = 'ED'
 REFEREE_CODE = 'RE'
 ROLES_COLLECTION = 'roles'
-TEST_CODE = 'TR'
 ROLES = {
     AUTHOR_CODE: 'Author',
     EDITOR_CODE: 'Editor',
     REFEREE_CODE: 'Referee',
 }
 MH_ROLES = [AUTHOR_CODE, EDITOR_CODE]
-
-dbc.connect_db()
-
-
-def create(code: str, role: str, testing=False) -> bool:
-    """
-    Create a new role in MongoDB.
-    """
-    try:
-        if dbc.fetch_one(ROLES_COLLECTION, {"code": code}, testing=testing):
-            raise ValueError(f"Role with code '{code}' already exists.")
-        role_doc = {"code": code, "role": role}
-        dbc.insert_one(ROLES_COLLECTION, role_doc, testing=testing)
-        return True
-    except Exception as e:
-        print(f"Error in create: {str(e)}")
-        raise e
 
 
 def get_roles(testing=False) -> dict:
@@ -47,6 +29,45 @@ def get_roles(testing=False) -> dict:
     except Exception as e:
         print(f"Error in get_roles: {str(e)}")
         return {}
+
+
+def create(code: str, role: str, testing=False):
+    """
+    Create a new role in MongoDB, with safeguards for test roles.
+    """
+    try:
+        if dbc.fetch_one(ROLES_COLLECTION, {"code": code}, testing=testing):
+            raise ValueError(f"Role with code '{code}' already exists.")
+
+        dbc.insert_one(ROLES_COLLECTION, {
+            "code": code,
+            "role": role
+            }, testing=testing)
+        return True
+    except Exception as e:
+        print(f"Error in create: {str(e)}")
+        raise e
+
+
+def seed_roles(testing=False):
+    """
+    Seed the default roles into the roles collection.
+    """
+    try:
+        collection = ROLES_COLLECTION
+        if testing:
+            collection += "_test"  # Ensure testing uses the test collection
+
+        existing_roles = get_roles(testing=testing)
+        for code, role in ROLES.items():
+            if code not in existing_roles:
+                create(code, role, testing=testing)
+    except Exception as e:
+        print(f"Error in seeding roles: {str(e)}")
+
+
+dbc.connect_db()
+seed_roles()
 
 
 def read_one(code: str, testing=False) -> str:

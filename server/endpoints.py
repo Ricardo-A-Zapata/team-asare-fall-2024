@@ -43,6 +43,9 @@ USER_DELETE_RESP = 'Delete'
 USER_UPDATE_EP = '/user/update'
 USER_UPDATE_RESP = 'Status'
 
+USER_REMOVE_ROLE_EP = '/user/remove_role'
+USER_REMOVE_ROLE_RESP = 'Role removed from user'
+
 ROLE_READ_EP = '/role/read'
 ROLE_READ_RESP = 'Roles'
 
@@ -142,7 +145,7 @@ class UserUpdate(Resource):
     @api.expect(USER_UPDATE_FLDS)
     def put(self):
         """
-        Update a user's information including roles.
+        Update a user's information, including roles.
         """
         try:
             email = request.json.get(usr.EMAIL)
@@ -156,17 +159,20 @@ class UserUpdate(Resource):
             handle_request_error('update user', err)
 
 
-@api.route(f'{USER_DELETE_EP}/<_id>')
+@api.route(f'{USER_DELETE_EP}/<email>')
 class UserDelete(Resource):
     """
     Delete a user.
     """
     @api.response(HTTPStatus.OK, 'Success.')
     @api.response(HTTPStatus.NOT_FOUND, 'No such user.')
-    def delete(self, _id):
+    def delete(self, email):
+        """
+        Delete a user by their email as a unique identifier.
+        """
         try:
             testing = current_app.config.get(TESTING, False)
-            ret = usr.delete(_id, testing=testing)
+            ret = usr.delete(email, testing=testing)
             return {USER_DELETE_RESP: 'success', RETURN: ret}
         except Exception as err:
             handle_request_error('delete user', err, wz.NotFound)
@@ -193,6 +199,40 @@ class UserRead(Resource):
         return {
             USER_READ_RESP: users
         }
+
+
+USER_REMOVE_ROLE_FIELDS = api.model('UserRemoveRoleFields', {
+    'email': fields.String,
+    'role': fields.String
+})
+
+
+@api.route(USER_REMOVE_ROLE_EP)
+class UserRemoveRole(Resource):
+    """
+    Remove a role from a user.
+    """
+    @api.expect(USER_REMOVE_ROLE_FIELDS)
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'User or role not found')
+    def delete(self):
+        """
+        Remove a role from a user, identified by their email.
+        """
+        try:
+            email = request.json.get('email')
+            role = request.json.get('role')
+            testing = current_app.config.get(TESTING, False)
+
+            # Call a function in `users.py` to handle this
+            ret = usr.remove_role(email, role, testing)
+            if not ret:
+                raise wz.NotFound(f'Could not remove role {
+                    role
+                    } from user {email}')
+            return {USER_REMOVE_ROLE_RESP: 'Role removed successfully'}
+        except Exception as e:
+            handle_request_error('remove role from user', e)
 
 
 @api.route(JOURNAL_NAME_EP)
@@ -474,21 +514,6 @@ class TextReadAll(Resource):
             return {TEXT_READ_RESP: txt.read(testing=testing)}
         except Exception as err:
             handle_request_error('read texts', err, wz.ServiceUnavailable)
-
-
-ROLE_READ_ALL_EP = '/role/read_all'
-
-
-@api.route(ROLE_READ_ALL_EP)
-class RoleReadAll(Resource):
-    def get(self):
-        try:
-            roles = rls.get_roles(testing=True)
-            if not roles:
-                return {ROLE_READ_RESP: 'No Roles found'}, HTTPStatus.NOT_FOUND
-            return {ROLE_READ_RESP: roles}, OK
-        except Exception as e:
-            handle_request_error('read all roles', e)
 
 
 MANUSCRIPT_EP = '/manuscript'
