@@ -7,7 +7,7 @@ import data.db_connect as dbc
 
 # fields
 NAME = 'name'
-ROLES = 'roles'
+ROLES = 'roleCodes'
 EMAIL = 'email'
 AFFILIATION = 'affiliation'
 TEST_EMAIL = 'ejc369@nyu.edu'
@@ -46,7 +46,7 @@ def create(
             valid_roles = rls.get_roles(testing=testing)
             for role in roles:
                 if role not in valid_roles:
-                    raise ValueError(f"Invalid role: {role}")
+                    raise ValueError(f"Invalid role code: {role}")
 
         # Check for duplicate user
         collection = get_collection_name(testing)

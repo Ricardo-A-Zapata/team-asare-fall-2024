@@ -47,7 +47,7 @@ USER_REMOVE_ROLE_EP = '/user/remove_role'
 USER_REMOVE_ROLE_RESP = 'Role removed from user'
 
 ROLE_READ_EP = '/role/read'
-ROLE_READ_RESP = 'Roles'
+ROLE_READ_RESP = 'Role'
 
 ROLE_CREATE_EP = '/role/create'
 ROLE_CREATE_RESP = 'Role Created'
@@ -113,6 +113,8 @@ class UserCreate(Resource):
     def put(self):
         """
         Add a user.
+        If you do not wish for the user to have a role, make sure to
+        completely delete "string".
         """
         try:
             name = request.json.get(usr.NAME)
@@ -257,8 +259,7 @@ class HelloWorld(Resource):
     """
     def get(self):
         """
-        A trivial endpoint to see if the server is running.
-        It just answers with "hello world."
+        A trivial endpoint to check server that answers with "hello world".
         """
         return {HELLO_RESP: 'world'}
 
@@ -271,9 +272,10 @@ class Endpoints(Resource):
     """
     def get(self):
         """
-        The `get()` method will return sorted a list of available endpoints.
+        Returns a sorted list of available endpoints.
         """
-        endpoints = sorted(rule.rule for rule in api.app.url_map.iter_rules())
+        endpoints = sorted(set(
+            rule.rule for rule in api.app.url_map.iter_rules()))
         return {ENDPOINT_RESP: endpoints}
 
 
@@ -416,6 +418,9 @@ class RoleRead(Resource):
 class RoleCreate(Resource):
     @api.expect(ROLE_FIELDS)
     def post(self):
+        """
+        Create a role.
+        """
         try:
             code = request.json['code']
             role = request.json['role']
@@ -430,11 +435,14 @@ class RoleCreate(Resource):
 @api.route(f'{ROLE_READ_EP}/<string:code>')
 class RoleReadOne(Resource):
     def get(self, code):
+        """
+        Retrieve a role by its role code.
+        """
         try:
             role = rls.read_one(code)
             if not role:
                 raise wz.NotFound(f'No role found for code: {code}')
-            return {ROLE_READ_RESP: role}
+            return {'Role': role}
         except Exception as e:
             handle_request_error('read role', e, wz.NotFound)
 
@@ -443,6 +451,9 @@ class RoleReadOne(Resource):
 class RoleUpdate(Resource):
     @api.expect(ROLE_FIELDS)
     def put(self):
+        """
+        Update a role by its role code.
+        """
         try:
             code = request.json['code']
             role = request.json['role']
@@ -456,12 +467,23 @@ class RoleUpdate(Resource):
 
 @api.route(f'{ROLE_DELETE_EP}/<string:code>')
 class RoleDelete(Resource):
+    """
+    Delete a role by its role code and remove it from all users.
+    """
     def delete(self, code):
+        """
+        Delete a role by its role code and remove it from all users.
+        """
         try:
-            ret = rls.delete(code)
-            if not ret:
+
+            role_deleted = rls.delete(code)
+            if not role_deleted:
                 raise wz.NotFound(f'Role with code "{code}" not found.')
-            return {ROLE_DELETE_RESP: 'Role deleted!', RETURN: ret}
+
+            return {
+                ROLE_DELETE_RESP: 'Role deleted!',
+                "deleted_role": role_deleted
+            }
         except Exception as e:
             handle_request_error('delete role', e, wz.NotFound)
 
@@ -469,13 +491,13 @@ class RoleDelete(Resource):
 @api.route(USER_GET_MASTHEAD)
 class Masthead(Resource):
     def get(self):
+        """
+        Retrieves all masthead roles.
+        """
         return create_response('Masthead', usr.get_masthead())
 
 
-USER_READ_SINGLE_EP = '/user/read_single'
-
-
-@api.route(f'{USER_READ_SINGLE_EP}/<string:email>')
+@api.route(f'{USER_READ_EP}/<string:email>')
 class UserReadSingle(Resource):
     """
     Read a single user from the journal database.
@@ -496,10 +518,7 @@ class UserReadSingle(Resource):
             handle_request_error('read user', err, wz.NotFound)
 
 
-TEXT_READ_ALL_EP = '/text/read_all'
-
-
-@api.route(TEXT_READ_ALL_EP)
+@api.route(TEXT_READ_EP)
 class TextReadAll(Resource):
     """
     Read all text entries.

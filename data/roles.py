@@ -97,15 +97,28 @@ def update(code: str, new_role: str, testing=False) -> bool:
         raise e
 
 
-def delete(code: str, testing=False) -> bool:
+def delete(code: str, testing=False) -> dict:
     """
-    Delete a role by its code from MongoDB.
+    Delete a role by its code from MongoDB, remove it from all users,
+    and return details of the deleted role.
     """
     try:
-        if not read_one(code, testing=testing):
-            return False
+
+        role = dbc.fetch_one(ROLES_COLLECTION, {
+            "code": code}, testing=testing)
+        if not role:
+            return None
+
+        # Delete the role from the roles collection
         dbc.del_one(ROLES_COLLECTION, {"code": code}, testing=testing)
-        return True
+
+        # Remove the role code from all users
+        dbc.client[dbc.JOURNAL_DB]['users'].update_many(
+            {"roleCodes": code},
+            {"$pull": {"roleCodes": code}}
+        )
+
+        return role
     except Exception as e:
         print(f"Error in delete: {str(e)}")
         raise e

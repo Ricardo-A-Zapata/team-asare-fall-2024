@@ -56,17 +56,20 @@ def insert_one(collection, doc, db=JOURNAL_DB, testing=False):
     """
     return client[db][collection].insert_one(doc)
 
-
+    
 def fetch_one(collection, filt, db=JOURNAL_DB, testing=False):
     """
-    Find with a filter and return on the first doc found.
-    Return None if not found.
+    Find with a filter and return only the first doc found. Return None if not found.
     """
-    for doc in client[db][collection].find(filt):
-        if MONGO_ID in doc:
-            # Convert mongo ID to a string so it works as JSON
-            doc[MONGO_ID] = str(doc[MONGO_ID])
-        return doc
+    try:
+        for doc in client[db][collection].find(filt):
+            if MONGO_ID in doc:
+                doc[MONGO_ID] = str(doc[MONGO_ID])
+            return doc
+    except Exception as e:
+        print(f"Error fetching document: {e}")
+        return None
+
 
 
 def del_one(collection, filt, db=JOURNAL_DB, testing=False):
@@ -76,20 +79,45 @@ def del_one(collection, filt, db=JOURNAL_DB, testing=False):
     client[db][collection].delete_one(filt)
 
 
-def update_doc(collection, filters, update_dict, db=JOURNAL_DB, testing=False):
-    return client[db][collection].update_one(filters, {'$set': update_dict})
+def update_doc(
+        collection,
+        filters,
+        update_dict,
+        db=JOURNAL_DB,
+        testing=False):
+    """
+    Update a document in the collection with the
+     specified filters and update dictionary.
+    """
+    return client[db][collection].update_one(filters, update_dict)
+
 
 
 def fetch_all(collection, db=JOURNAL_DB, testing=False):
+    """
+    Fetch all documents from the specified collection.
+    """
     ret = []
-    for doc in client[db][collection].find():
-        ret.append(doc)
+    try:
+        for doc in client[db][collection].find():
+            if MONGO_ID in doc:
+                doc[MONGO_ID] = str(doc[MONGO_ID])
+            ret.append(doc)
+    except Exception as e:
+        print(f"Error fetching documents: {e}")
     return ret
 
 
-def fetch_all_as_dict(key, collection, db=JOURNAL_DB):
+def fetch_all_as_dict(key, collection, db=JOURNAL_DB, remove_id=True):
+    """
+    Fetch all documents as a dictionary with the specified key.
+    """
     ret = {}
-    for doc in client[db][collection].find():
-        del doc[MONGO_ID]
-        ret[doc[key]] = doc
+    try:
+        for doc in client[db][collection].find():
+            if remove_id and MONGO_ID in doc:
+                del doc[MONGO_ID]
+            ret[doc[key]] = doc
+    except Exception as e:
+        print(f"Error fetching all documents as dict: {e}")
     return ret

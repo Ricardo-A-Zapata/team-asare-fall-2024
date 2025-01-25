@@ -374,7 +374,7 @@ def test_read_single_user():
         assert resp.json[ep.USERS_RESP] == 'User added!'
         
         # Test reading the single user
-        resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/{test["email"]}')
+        resp = TEST_CLIENT.get(f'{ep.USER_READ_EP}/{test["email"]}')
         assert resp.status_code == OK
         resp_json = resp.get_json()
         assert ep.USER_READ_RESP in resp_json
@@ -383,7 +383,7 @@ def test_read_single_user():
         assert resp_json[ep.USER_READ_RESP]['email'] == test['email']
 
         # Test retrieving non-existent user
-        resp = TEST_CLIENT.get(f'{ep.USER_READ_SINGLE_EP}/{NE_VALUE}@email.com')
+        resp = TEST_CLIENT.get(f'{ep.USER_READ_EP}/{NE_VALUE}@email.com')
         assert resp.status_code == NOT_FOUND
 
     finally:
@@ -414,7 +414,7 @@ def test_read_all_texts():
         # Verify creation in test DB
         assert txt.read_one(text["key"], testing=True) is not None
     
-    resp = TEST_CLIENT.get(ep.TEXT_READ_ALL_EP)
+    resp = TEST_CLIENT.get(ep.TEXT_READ_EP)
     assert resp.status_code == OK
     resp_json = resp.get_json()
     assert ep.TEXT_READ_RESP in resp_json
