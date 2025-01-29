@@ -144,8 +144,8 @@ def update_state(
         current_state = manuscript[STATE]
         if not validate_state_transition(current_state, new_state):
             return {
-                "error": f"Invalid state transition from {
-                    current_state} to {new_state}"
+                "error": f'''Invalid state transition from {
+                    current_state} to {new_state}'''
             }
 
         # Update state and history

@@ -56,10 +56,11 @@ def insert_one(collection, doc, db=JOURNAL_DB, testing=False):
     """
     return client[db][collection].insert_one(doc)
 
-    
+
 def fetch_one(collection, filt, db=JOURNAL_DB, testing=False):
     """
-    Find with a filter and return only the first doc found. Return None if not found.
+    Find with a filter and return only the first doc found.
+    Return None if not found.
     """
     try:
         for doc in client[db][collection].find(filt):
@@ -69,7 +70,6 @@ def fetch_one(collection, filt, db=JOURNAL_DB, testing=False):
     except Exception as e:
         print(f"Error fetching document: {e}")
         return None
-
 
 
 def del_one(collection, filt, db=JOURNAL_DB, testing=False):
@@ -89,8 +89,7 @@ def update_doc(
     Update a document in the collection with the
      specified filters and update dictionary.
     """
-    return client[db][collection].update_one(filters, update_dict)
-
+    return client[db][collection].update_one(filters, {'$set': update_dict})
 
 
 def fetch_all(collection, db=JOURNAL_DB, testing=False):

@@ -229,9 +229,9 @@ class UserRemoveRole(Resource):
             # Call a function in `users.py` to handle this
             ret = usr.remove_role(email, role, testing)
             if not ret:
-                raise wz.NotFound(f'Could not remove role {
+                raise wz.NotFound(f'''Could not remove role {
                     role
-                    } from user {email}')
+                    } from user {email}''')
             return {USER_REMOVE_ROLE_RESP: 'Role removed successfully'}
         except Exception as e:
             handle_request_error('remove role from user', e)
