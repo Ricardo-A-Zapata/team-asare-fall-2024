@@ -1,6 +1,6 @@
 # flask-api
 Project Name: ASARE
-Members: Aayush, Sam, Aurora, Riccardo, Eli
+Members: Aayush, Sam, Aurora, Ricardo (Ricky), Eli
 
 This repository serves as our Flask api backend for our FullStack journal SWE project. Our Frontend will soon be available, which will send http requests to our [endpoints](server/endpoints.py).
 
