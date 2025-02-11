@@ -19,6 +19,12 @@ HISTORY = 'history'
 EDITOR = 'editor'
 REPORT = 'report'
 VERDICT = 'verdict'
+VERSION = 'version'
+REVISIONS = 'revisions'
+REVIEW_ROUND = 'review_round'
+REFEREE_COMMENTS = 'referee_comments'
+AUTHOR_RESPONSE = 'author_response'
+TIMESTAMP = 'timestamp'
 
 STATE_SUBMITTED = 'SUBMITTED'
 STATE_REFEREE_REVIEW = 'REFEREE_REVIEW'
@@ -89,6 +95,16 @@ def create_manuscript(
             REFEREES: {},  # Referees are initially empty
             TEXT: text,
             ABSTRACT: abstract,
+            VERSION: 1,  # Initial version
+            REVISIONS: [{  # Track revision history
+                VERSION: 1,
+                TEXT: text,
+                ABSTRACT: abstract,
+                TIMESTAMP: timestamp,
+                REVIEW_ROUND: 0,  # Initial submission
+                REFEREE_COMMENTS: [],
+                AUTHOR_RESPONSE: None
+            }],
             HISTORY: [
                 {
                     "state": STATE_SUBMITTED,
@@ -486,3 +502,98 @@ def validate_state_transition(current_state: str, new_state: str) -> bool:
         }
     }
     return new_state in valid_transitions.get(current_state, set())
+
+
+def update_manuscript_text(
+    manuscript_id: str,
+    new_text: str,
+    new_abstract: str,
+    author_email: str,
+    author_response: str = None,
+    testing: bool = False
+) -> Optional[dict]:
+    """
+    Update manuscript text and track the revision.
+    """
+    try:
+        manuscript = get_manuscript(manuscript_id)
+        if not manuscript:
+            return {"error": "Manuscript not found"}
+        current_state = manuscript[STATE]
+        if current_state not in [STATE_AUTHOR_REVISIONS, STATE_SUBMITTED]:
+            return {
+                "error": f"Cannot update manuscript in state: {current_state}"
+            }
+        timestamp = datetime.now().isoformat()
+        current_version = manuscript.get(VERSION, 1)
+        new_version = current_version + 1
+        new_revision = {
+            VERSION: new_version,
+            TEXT: new_text,
+            ABSTRACT: new_abstract,
+            TIMESTAMP: timestamp,
+            REVIEW_ROUND: len(manuscript.get(REVISIONS, [])),
+            REFEREE_COMMENTS: [],
+            AUTHOR_RESPONSE: author_response
+        }
+        manuscript[TEXT] = new_text
+        manuscript[ABSTRACT] = new_abstract
+        manuscript[VERSION] = new_version
+        manuscript[REVISIONS] = manuscript.get(REVISIONS, []) + [new_revision]
+        manuscript[HISTORY].append({
+            "state": current_state,
+            "timestamp": timestamp,
+            "actor": author_email,
+            "action": "text_update",
+            "version": new_version
+        })
+        _id = manuscript.pop('_id')
+        dbc.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(_id)},
+            manuscript
+        )
+        return get_manuscript(manuscript_id)
+    except Exception as e:
+        print(f"Error updating manuscript text: {e}")
+        return {"error": str(e)}
+
+
+def get_manuscript_version(
+    manuscript_id: str,
+    version: int,
+    testing: bool = False
+) -> Optional[dict]:
+    """
+    Get a specific version of a manuscript.
+    Args:
+        manuscript_id: The ID of the manuscript
+        version: The version number to retrieve
+        testing: Whether this is a test operation
+    Returns:
+        The manuscript version or None if not found
+    """
+    try:
+        manuscript = get_manuscript(manuscript_id)
+        if not manuscript:
+            return {"error": "Manuscript not found"}
+        if version < 1 or version > manuscript.get(VERSION, 1):
+            return {"error": f"Version {version} does not exist"}
+        # Find the specific revision
+        revision = None
+        for rev in manuscript.get(REVISIONS, []):
+            if rev[VERSION] == version:
+                revision = rev
+                break
+        if not revision:
+            return {"error": f"Version {version} not found in history"}
+        # Create a version-specific view of the manuscript
+        version_manuscript = manuscript.copy()
+        version_manuscript[TEXT] = revision[TEXT]
+        version_manuscript[ABSTRACT] = revision[ABSTRACT]
+        version_manuscript[VERSION] = version
+        version_manuscript['current_version'] = manuscript[VERSION]
+        return version_manuscript
+    except Exception as e:
+        print(f"Error getting manuscript version: {e}")
+        return {"error": f"An error occurred: {str(e)}"}

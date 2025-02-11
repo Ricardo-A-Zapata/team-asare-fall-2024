@@ -27,6 +27,97 @@ def test_create_manuscript():
     manuscripts.delete_one({"_id": ObjectId(manuscript["_id"])})
 
 
+def test_update_manuscript_text():
+    """Test updating manuscript text with revision tracking"""
+    # Create a manuscript
+    manuscript = ms.create_manuscript(
+        title="Test Manuscript",
+        author="John Doe",
+        author_email="johndoe@example.com",
+        text="Original text",
+        abstract="Original abstract"
+    )
+    
+    manuscript_id = str(manuscript["_id"])
+    
+    try:
+        # Update the text
+        updated = ms.update_manuscript_text(
+            manuscript_id,
+            "Updated text",
+            "Updated abstract",
+            "johndoe@example.com",
+            "Response to reviewer comments"
+        )
+        
+        # Verify update
+        assert updated is not None
+        assert updated[ms.TEXT] == "Updated text"
+        assert updated[ms.ABSTRACT] == "Updated abstract"
+        assert updated[ms.VERSION] == 2
+        assert len(updated[ms.REVISIONS]) == 2
+        assert updated[ms.REVISIONS][-1][ms.VERSION] == 2
+        assert updated[ms.REVISIONS][-1][ms.TEXT] == "Updated text"
+        assert updated[ms.REVISIONS][-1][ms.AUTHOR_RESPONSE] == "Response to reviewer comments"
+        
+        # Verify history
+        assert len(updated[ms.HISTORY]) > 1
+        last_history = updated[ms.HISTORY][-1]
+        assert last_history["action"] == "text_update"
+        assert last_history["version"] == 2
+        
+    finally:
+        # Cleanup
+        ms.delete_manuscript(manuscript_id)
+
+
+def test_get_manuscript_version():
+    """Test retrieving specific manuscript versions"""
+    # Create a manuscript
+    manuscript = ms.create_manuscript(
+        title="Test Manuscript",
+        author="John Doe",
+        author_email="johndoe@example.com",
+        text="Original text",
+        abstract="Original abstract"
+    )
+    
+    manuscript_id = str(manuscript["_id"])
+    
+    try:
+        # Update the text to create version 2
+        ms.update_manuscript_text(
+            manuscript_id,
+            "Updated text",
+            "Updated abstract",
+            "johndoe@example.com"
+        )
+        
+        # Get version 1
+        version1 = ms.get_manuscript_version(manuscript_id, 1)
+        assert version1 is not None
+        assert version1[ms.TEXT] == "Original text"
+        assert version1[ms.ABSTRACT] == "Original abstract"
+        assert version1[ms.VERSION] == 1
+        assert version1['current_version'] == 2
+        
+        # Get version 2
+        version2 = ms.get_manuscript_version(manuscript_id, 2)
+        assert version2 is not None
+        assert version2[ms.TEXT] == "Updated text"
+        assert version2[ms.ABSTRACT] == "Updated abstract"
+        assert version2[ms.VERSION] == 2
+        assert version2['current_version'] == 2
+        
+        # Try to get non-existent version
+        version3 = ms.get_manuscript_version(manuscript_id, 3)
+        assert "error" in version3
+        
+    finally:
+        # Cleanup
+        ms.delete_manuscript(manuscript_id)
+
+
 # # Add this fixture at the top of the test file
 # @pytest.fixture(autouse=True)
 # def setup_test_db():
@@ -173,13 +264,6 @@ def test_create_manuscript():
 
 #     # Cleanup
 #     ms.delete_manuscript(str(manuscript["_id"]))
-
-
-# def test_get_nonexistent_manuscript():
-#     # Attempt to retrieve a non-existent manuscript
-#     nonexistent_id = "64d1e69e8f2b3c44b3e3d9c0"  # Random ID
-#     manuscript = ms.get_manuscript(nonexistent_id)
-#     assert manuscript is None
 
 
 # def test_update_nonexistent_manuscript():

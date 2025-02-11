@@ -541,12 +541,25 @@ MANUSCRIPT_DETAIL_RESP = 'Manuscript'
 MANUSCRIPT_STATE_EP = '/manuscript/state'
 MANUSCRIPT_STATE_RESP = 'Manuscript State'
 
+MANUSCRIPT_TEXT_EP = '/manuscript/text'
+MANUSCRIPT_TEXT_RESP = 'Manuscript Text'
+
+MANUSCRIPT_VERSION_EP = '/manuscript/version'
+MANUSCRIPT_VERSION_RESP = 'Manuscript Version'
+
 MANUSCRIPT_REFEREE_EP = '/manuscript/referee'
 MANUSCRIPT_REFEREE_RESP = 'Manuscript Referee'
 
 STATE_FIELDS = api.model('StateFields', {
     'state': fields.String,
     'actor_email': fields.String,
+})
+
+TEXT_UPDATE_FIELDS = api.model('TextUpdateFields', {
+    'new_text': fields.String,
+    'new_abstract': fields.String,
+    'author_email': fields.String,
+    'author_response': fields.String(required=False),
 })
 
 REFEREE_FIELDS = api.model('RefereeFields', {
@@ -670,3 +683,61 @@ class UserAddRole(Resource):
             return {USER_ADD_ROLE_RESP: 'Role added successfully'}
         except Exception as e:
             handle_request_error('add role to user', e)
+
+
+@api.route(f'{MANUSCRIPT_TEXT_EP}/<manuscript_id>')
+class ManuscriptText(Resource):
+    """
+    Update manuscript text with revision tracking.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    @api.expect(TEXT_UPDATE_FIELDS)
+    def put(self, manuscript_id):
+        """
+        Update manuscript text and track the revision.
+        """
+        try:
+            new_text = request.json.get('new_text')
+            new_abstract = request.json.get('new_abstract')
+            author_email = request.json.get('author_email')
+            author_response = request.json.get('author_response')
+            testing = current_app.config.get(TESTING, False)
+            manuscript = ms.update_manuscript_text(
+                manuscript_id,
+                new_text,
+                new_abstract,
+                author_email,
+                author_response,
+                testing
+            )
+            if not manuscript:
+                raise wz.NotFound('Text update failed.')
+            return {MANUSCRIPT_TEXT_RESP: manuscript}
+        except Exception as e:
+            handle_request_error('update manuscript text', e)
+
+
+@api.route(f'{MANUSCRIPT_VERSION_EP}/<manuscript_id>/<int:version>')
+class ManuscriptVersion(Resource):
+    """
+    Get a specific version of a manuscript.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    def get(self, manuscript_id, version):
+        """
+        Get a specific version of a manuscript.
+        """
+        try:
+            testing = current_app.config.get(TESTING, False)
+            manuscript = ms.get_manuscript_version(
+                manuscript_id,
+                version,
+                testing
+            )
+            if not manuscript:
+                raise wz.NotFound(f'Version {version} not found.')
+            return {MANUSCRIPT_VERSION_RESP: manuscript}
+        except Exception as e:
+            handle_request_error('get manuscript version', e)
