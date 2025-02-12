@@ -118,6 +118,29 @@ def test_get_manuscript_version():
         ms.delete_manuscript(manuscript_id)
 
 
+def test_invalid_state_transition():
+    """Ensure invalid state transitions return an error message"""
+    manuscript = ms.create_manuscript(
+        title="Invalid Transition Test",
+        author="John Doe",
+        author_email="johndoe@example.com",
+        text="Manuscript text",
+        abstract="Manuscript abstract"
+    )
+
+    manuscript_id = str(manuscript["_id"])
+    invalid_state = "INVALID_STATE"
+
+    try:
+        # Attempt an invalid transition
+        response = ms.update_state(manuscript_id, invalid_state, "editor@example.com")
+        assert response is not None
+        assert "error" in response
+    finally:
+        ms.delete_manuscript(manuscript_id)
+
+
+
 # # Add this fixture at the top of the test file
 # @pytest.fixture(autouse=True)
 # def setup_test_db():
