@@ -92,16 +92,16 @@ def create_manuscript(
             AUTHOR: author,
             AUTHOR_EMAIL: author_email,
             STATE: STATE_SUBMITTED,
-            REFEREES: {},  # Referees are initially empty
+            REFEREES: {},
             TEXT: text,
             ABSTRACT: abstract,
-            VERSION: 1,  # Initial version
-            REVISIONS: [{  # Track revision history
+            VERSION: 1,
+            REVISIONS: [{
                 VERSION: 1,
                 TEXT: text,
                 ABSTRACT: abstract,
                 TIMESTAMP: timestamp,
-                REVIEW_ROUND: 0,  # Initial submission
+                REVIEW_ROUND: 0,
                 REFEREE_COMMENTS: [],
                 AUTHOR_RESPONSE: None
             }],
@@ -112,10 +112,9 @@ def create_manuscript(
                     "actor": author_email,
                 }
             ],
-            EDITOR: None,  # No editor assigned yet
+            EDITOR: None,
         }
 
-        # Insert the manuscript and retrieve the inserted ID
         result = dbc.insert_one(collection, manuscript)
         manuscript["_id"] = str(result.inserted_id)
         return manuscript
@@ -151,12 +150,10 @@ def update_state(
     Update the state of a manuscript and record in history.
     """
     try:
-        # Fetch the manuscript
         manuscript = get_manuscript(manuscript_id)
         if not manuscript:
             return {"error": "Manuscript not found"}
 
-        # Validate the state transition
         current_state = manuscript[STATE]
         if not validate_state_transition(current_state, new_state):
             return {
@@ -164,7 +161,6 @@ def update_state(
                     current_state} to {new_state}'''
             }
 
-        # Update state and history
         manuscript[STATE] = new_state
         manuscript[HISTORY].append({
             "state": new_state,
@@ -172,7 +168,6 @@ def update_state(
             "actor": actor_email
         })
 
-        # Save the updated manuscript in the database
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
             {"_id": ObjectId(manuscript_id)},
@@ -207,20 +202,64 @@ def assign_editor(
         return None
 
 
-def editor_move(
-    manuscript_id: str,
-    target_state: str,
-    editor_email: str
-) -> Optional[dict]:
+def editor_move(manuscript_id: str,
+                target_state: str,
+                editor_email: str) -> Optional[dict]:
     """
-    Editor is able to move manuscript to any state
+    Allows an editor to forcefully move a manuscript to any state.
     """
-    return update_state(manuscript_id, target_state, editor_email)
+    try:
+        manuscript = get_manuscript(manuscript_id)
+        if not manuscript:
+            return {"error": "Manuscript not found"}
+
+        manuscript[STATE] = target_state
+        manuscript[HISTORY].append({
+            "state": target_state,
+            "timestamp": datetime.now().isoformat(),
+            "actor": editor_email,
+            "action": "editor_move"
+        })
+
+        dbc.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            {"$set": {STATE: target_state, HISTORY: manuscript[HISTORY]}}
+        )
+        return get_manuscript(manuscript_id)
+    except Exception as e:
+        print(f"Error performing editor move: {e}")
+        return {"error": f"An error occurred: {str(e)}"}
 
 
-def author_withdraw(
-        manuscript_id: str, author_email: str) -> Optional[dict]:
-    return update_state(manuscript_id, STATE_WITHDRAWN, author_email)
+def author_withdraw(manuscript_id: str,
+                    author_email: str) -> Optional[dict]:
+    """
+    Allows the author to withdraw a manuscript from any state.
+    """
+    try:
+        manuscript = get_manuscript(manuscript_id)
+        if not manuscript:
+            return {"error": "Manuscript not found"}
+
+        manuscript[STATE] = STATE_WITHDRAWN
+        manuscript[HISTORY].append({
+            "state": STATE_WITHDRAWN,
+            "timestamp": datetime.now().isoformat(),
+            "actor": author_email,
+            "action": "withdraw"
+        })
+
+        dbc.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            {"$set": {STATE: STATE_WITHDRAWN,
+                      HISTORY: manuscript[HISTORY]}}
+        )
+        return get_manuscript(manuscript_id)
+    except Exception as e:
+        print(f"Error withdrawing manuscript: {e}")
+        return {"error": f"An error occurred: {str(e)}"}
 
 
 def get_referee_verdict(manuscript_id: str) -> Optional[str]:
@@ -329,13 +368,11 @@ def add_referee_report(
     testing=False
 ) -> Optional[dict]:
     """
-    Add a referee report to a manuscript.
+    Adds a referee report and updates manuscript state accordingly.
     """
-    if verdict not in [
-        VERDICT_ACCEPT,
-        VERDICT_ACCEPT_WITH_REVISIONS,
-        VERDICT_REJECT
-    ]:
+    if verdict not in [VERDICT_ACCEPT,
+                       VERDICT_ACCEPT_WITH_REVISIONS,
+                       VERDICT_REJECT]:
         return {"error": f"Invalid verdict: {verdict}"}
 
     try:
@@ -347,16 +384,28 @@ def add_referee_report(
         if referee_email not in referees:
             return {"error": "Referee not assigned to this manuscript"}
 
-        referees[referee_email] = {
-            REPORT: report,
-            VERDICT: verdict
-        }
+        referees[referee_email] = {REPORT: report, VERDICT: verdict}
+
+        next_state = manuscript[STATE]
+        if verdict == VERDICT_ACCEPT_WITH_REVISIONS:
+            next_state = STATE_AUTHOR_REVISIONS
+        elif verdict == VERDICT_REJECT:
+            next_state = STATE_REJECTED
+
+        manuscript[STATE] = next_state
+        manuscript[HISTORY].append({
+            "state": next_state,
+            "timestamp": datetime.now().isoformat(),
+            "actor": referee_email,
+            "action": "submit_review"
+        })
+
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
             {"_id": ObjectId(manuscript_id)},
-            {"$set": {REFEREES: referees}},
-            db=dbc.JOURNAL_DB,
-            testing=testing
+            {"$set": {STATE: next_state,
+                      HISTORY: manuscript[HISTORY],
+                      REFEREES: referees}}
         )
         return get_manuscript(manuscript_id, testing=testing)
     except Exception as e:
@@ -369,7 +418,6 @@ def assign_referee(manuscript_id: str, referee_email: str) -> Optional[dict]:
     Assign a referee to a manuscript
     """
     try:
-        # Fetch manuscript and referee details
         manuscript = get_manuscript(manuscript_id)
         if not manuscript:
             return {"error": "Manuscript not found"}
@@ -378,7 +426,6 @@ def assign_referee(manuscript_id: str, referee_email: str) -> Optional[dict]:
         if not referee or "RE" not in referee.get("roleCodes", []):
             return {"error": "Referee not found or does not have the RE role"}
 
-        # Update referees field
         updated_referees = manuscript.get(REFEREES, {})
         if referee_email in updated_referees:
             return {"error": "Referee already assigned"}
@@ -405,7 +452,6 @@ def remove_referee(
         if not manuscript:
             return None
 
-        # Remove _id for update
         manuscript_id_obj = manuscript['_id']
         del manuscript['_id']
 
@@ -565,7 +611,6 @@ def get_manuscript_version(
             return {"error": "Manuscript not found"}
         if version < 1 or version > manuscript.get(VERSION, 1):
             return {"error": f"Version {version} does not exist"}
-        # Find the specific revision
         revision = None
         for rev in manuscript.get(REVISIONS, []):
             if rev[VERSION] == version:
@@ -573,7 +618,6 @@ def get_manuscript_version(
                 break
         if not revision:
             return {"error": f"Version {version} not found in history"}
-        # Create a version-specific view of the manuscript
         version_manuscript = manuscript.copy()
         version_manuscript[TEXT] = revision[TEXT]
         version_manuscript[ABSTRACT] = revision[ABSTRACT]
