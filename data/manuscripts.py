@@ -599,23 +599,31 @@ def get_manuscript_version(
     """
     try:
         manuscript = get_manuscript(manuscript_id)
-        if not manuscript:
-            return {"error": "Manuscript not found"}
-        if version < 1 or version > manuscript.get(VERSION, 1):
+        if (
+            "error" in manuscript
+            or version < 1
+            or version > manuscript.get(VERSION, 1)
+        ):
             return {"error": f"Version {version} does not exist"}
-        revision = None
-        for rev in manuscript.get(REVISIONS, []):
-            if rev[VERSION] == version:
-                revision = rev
-                break
+
+        revision = next(
+            (
+                rev for rev in manuscript.get(REVISIONS, [])
+                if rev[VERSION] == version
+            ),
+            None,
+        )
+
         if not revision:
-            return {"error": f"Version {version} not found in history"}
-        version_manuscript = manuscript.copy()
-        version_manuscript[TEXT] = revision[TEXT]
-        version_manuscript[ABSTRACT] = revision[ABSTRACT]
-        version_manuscript[VERSION] = version
-        version_manuscript['current_version'] = manuscript[VERSION]
-        return version_manuscript
+            return {"error": f"Version {version} not found"}
+
+        return {
+            TEXT: revision[TEXT],
+            ABSTRACT: revision[ABSTRACT],
+            VERSION: version,
+            "current_version": manuscript[VERSION],
+        }
+
     except Exception as e:
         print(f"Error getting manuscript version: {e}")
         return {"error": f"An error occurred: {str(e)}"}
