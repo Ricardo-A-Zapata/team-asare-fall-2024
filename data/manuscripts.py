@@ -515,20 +515,12 @@ def validate_state_transition(current_state: str, new_state: str) -> bool:
     Validate if a state transition is allowed according to the FSM.
     """
     valid_transitions = {
-        STATE_SUBMITTED: {STATE_REFEREE_REVIEW,
-                          STATE_REJECTED,
-                          STATE_WITHDRAWN},
-        STATE_REFEREE_REVIEW: {
-            STATE_AUTHOR_REVISIONS,
-            STATE_REJECTED,
-            STATE_COPY_EDIT,
-            STATE_WITHDRAWN
-        },
-        STATE_AUTHOR_REVISIONS: {STATE_COPY_EDIT, STATE_WITHDRAWN},
-        STATE_COPY_EDIT: {STATE_AUTHOR_REVIEW, STATE_WITHDRAWN},
-        STATE_AUTHOR_REVIEW: {STATE_FORMATTING, STATE_WITHDRAWN},
-        STATE_FORMATTING: {STATE_PUBLISHED, STATE_WITHDRAWN},
-        STATE_EDITOR_REVIEW: {STATE_COPY_EDIT, STATE_WITHDRAWN},
+        STATE_SUBMITTED: {STATE_AUTHOR_REVISIONS, STATE_REJECTED},
+        STATE_AUTHOR_REVISIONS: {STATE_COPY_EDIT},
+        STATE_COPY_EDIT: {STATE_AUTHOR_REVIEW},
+        STATE_AUTHOR_REVIEW: {STATE_FORMATTING},
+        STATE_FORMATTING: {STATE_PUBLISHED},
+        STATE_EDITOR_REVIEW: {STATE_COPY_EDIT},
         STATE_REJECTED: {},
         STATE_WITHDRAWN: {},
     }
