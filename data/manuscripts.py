@@ -60,7 +60,7 @@ dbc.connect_db()  # connect to MongoDB
 
 
 def get_collection_name(testing=False):
-    """Return the collection name - always manuscripts"""
+    """Return the collection name"""
     return MANUSCRIPTS_COLLECTION
 
 
@@ -129,9 +129,10 @@ def get_manuscript(manuscript_id: str, testing=False) -> Optional[dict]:
     Retrieve a manuscript by ID from MongoDB.
     """
     try:
-        collection = get_collection_name(testing)
         manuscript = dbc.fetch_one(
-            collection, {"_id": ObjectId(manuscript_id)}, testing=testing
+            get_collection_name(testing),
+            {"_id": ObjectId(manuscript_id)},
+            testing=testing
         )
         if manuscript:
             manuscript['_id'] = str(manuscript['_id'])
