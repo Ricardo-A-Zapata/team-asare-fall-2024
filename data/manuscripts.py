@@ -147,55 +147,43 @@ def update_state(
     new_state: str,
     actor_email: str
 ) -> Optional[dict]:
-    """
-    Update the state of a manuscript and record in history.
-    """
-    try:
-        manuscript = get_manuscript(manuscript_id)
-        if not manuscript:
-            return {"error": "Manuscript not found"}
-
-        current_state = manuscript[STATE]
-        if not validate_state_transition(current_state, new_state):
-            return {
-                "error": f'''Invalid state transition from {
-                    current_state} to {new_state}'''
-            }
-
-        manuscript[STATE] = new_state
-        manuscript[HISTORY].append({
-            "state": new_state,
-            "timestamp": datetime.now().isoformat(),
-            "actor": actor_email
-        })
-
-        dbc.update_doc(
-            MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
-            {"$set": {STATE: new_state, HISTORY: manuscript[HISTORY]}}
-        )
-        return get_manuscript(manuscript_id)
-    except Exception as e:
-        print(f"Error updating state: {e}")
-        return {"error": f"An error occurred: {str(e)}"}
-
-
-def assign_editor(
-    manuscript_id: str,
-    editor_email: str
-) -> Optional[dict]:
-    """
-    Assign an editor to a manuscript.
-    """
+    """Update the state of a manuscript and record in history."""
     manuscript = get_manuscript(manuscript_id)
     if not manuscript:
-        return None
-    manuscript[EDITOR] = editor_email
+        return {"error": "Manuscript not found"}
+
+    current_state = manuscript[STATE]
+    if not validate_state_transition(current_state, new_state):
+        return {
+            "error": (
+                f"Invalid state transition from {current_state} to {new_state}"
+            )
+        }
+
+    history_entry = {
+        "state": new_state,
+        "timestamp": datetime.now().isoformat(),
+        "actor": actor_email
+    }
+
+    dbc.update_doc(
+        MANUSCRIPTS_COLLECTION,
+        {"_id": ObjectId(manuscript_id)},
+        {"$set": {
+            STATE: new_state,
+            HISTORY: manuscript[HISTORY] + [history_entry]
+        }}
+    )
+    return get_manuscript(manuscript_id)
+
+
+def assign_editor(manuscript_id: str, editor_email: str) -> Optional[dict]:
+    """Assign an editor to a manuscript."""
     try:
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
             {"_id": ObjectId(manuscript_id)},
-            manuscript
+            {"$set": {EDITOR: editor_email}}
         )
         return get_manuscript(manuscript_id)
     except Exception as e:
@@ -203,29 +191,34 @@ def assign_editor(
         return None
 
 
-def editor_move(manuscript_id: str,
-                target_state: str,
-                editor_email: str) -> Optional[dict]:
-    """
-    Allows an editor to forcefully move a manuscript to any state.
-    """
+def editor_move(
+    manuscript_id: str,
+    target_state: str,
+    editor_email: str
+) -> Optional[dict]:
+    """Allows an editor to forcefully move a manuscript to any state."""
+    history_entry = {
+        "state": target_state,
+        "timestamp": datetime.now().isoformat(),
+        "actor": editor_email,
+        "action": "editor_move"
+    }
+
     try:
-        manuscript = get_manuscript(manuscript_id)
+        manuscript = dbc.fetch_one(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)}
+        )
         if not manuscript:
             return {"error": "Manuscript not found"}
-
-        manuscript[STATE] = target_state
-        manuscript[HISTORY].append({
-            "state": target_state,
-            "timestamp": datetime.now().isoformat(),
-            "actor": editor_email,
-            "action": "editor_move"
-        })
 
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
             {"_id": ObjectId(manuscript_id)},
-            {"$set": {STATE: target_state, HISTORY: manuscript[HISTORY]}}
+            {"$set": {
+                STATE: target_state,
+                HISTORY: manuscript[HISTORY] + [history_entry]
+            }}
         )
         return get_manuscript(manuscript_id)
     except Exception as e:
@@ -233,29 +226,33 @@ def editor_move(manuscript_id: str,
         return {"error": f"An error occurred: {str(e)}"}
 
 
-def author_withdraw(manuscript_id: str,
-                    author_email: str) -> Optional[dict]:
-    """
-    Allows the author to withdraw a manuscript from any state.
-    """
+def author_withdraw(
+    manuscript_id: str,
+    author_email: str
+) -> Optional[dict]:
+    """Allows the author to withdraw a manuscript from any state."""
+    history_entry = {
+        "state": STATE_WITHDRAWN,
+        "timestamp": datetime.now().isoformat(),
+        "actor": author_email,
+        "action": "withdraw"
+    }
+
     try:
-        manuscript = get_manuscript(manuscript_id)
+        manuscript = dbc.fetch_one(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)}
+        )
         if not manuscript:
             return {"error": "Manuscript not found"}
-
-        manuscript[STATE] = STATE_WITHDRAWN
-        manuscript[HISTORY].append({
-            "state": STATE_WITHDRAWN,
-            "timestamp": datetime.now().isoformat(),
-            "actor": author_email,
-            "action": "withdraw"
-        })
 
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
             {"_id": ObjectId(manuscript_id)},
-            {"$set": {STATE: STATE_WITHDRAWN,
-                      HISTORY: manuscript[HISTORY]}}
+            {"$set": {
+                STATE: STATE_WITHDRAWN,
+                HISTORY: manuscript[HISTORY] + [history_entry]
+            }}
         )
         return get_manuscript(manuscript_id)
     except Exception as e:
@@ -476,39 +473,33 @@ def submit_author_approval(
     manuscript_id: str,
     author_email: str
 ) -> Optional[dict]:
-    """
-    Author approves changes and moves manuscript to formatting
-    """
+    """Author approves changes and moves manuscript to formatting"""
     manuscript = get_manuscript(manuscript_id)
-    if not manuscript or manuscript[STATE] != STATE_AUTHOR_REVIEW:
-        return None
-    return update_state(manuscript_id, STATE_FORMATTING, author_email)
+    if manuscript and manuscript[STATE] == STATE_AUTHOR_REVIEW:
+        return update_state(manuscript_id, STATE_FORMATTING, author_email)
+    return None
 
 
 def complete_formatting(
     manuscript_id: str,
     editor_email: str
 ) -> Optional[dict]:
-    """
-    Complete formatting and move to published state
-    """
+    """Complete formatting and move to published state"""
     manuscript = get_manuscript(manuscript_id)
-    if not manuscript or manuscript[STATE] != STATE_FORMATTING:
-        return None
-    return update_state(manuscript_id, STATE_PUBLISHED, editor_email)
+    if manuscript and manuscript[STATE] == STATE_FORMATTING:
+        return update_state(manuscript_id, STATE_PUBLISHED, editor_email)
+    return None
 
 
 def complete_copy_edit(
     manuscript_id: str,
     editor_email: str
 ) -> Optional[dict]:
-    """
-    Complete copy editing and move to author review
-    """
+    """Complete copy editing and move to author review"""
     manuscript = get_manuscript(manuscript_id)
-    if not manuscript or manuscript[STATE] != STATE_COPY_EDIT:
-        return None
-    return update_state(manuscript_id, STATE_AUTHOR_REVIEW, editor_email)
+    if manuscript and manuscript[STATE] == STATE_COPY_EDIT:
+        return update_state(manuscript_id, STATE_AUTHOR_REVIEW, editor_email)
+    return None
 
 
 def validate_state_transition(current_state: str, new_state: str) -> bool:
