@@ -26,6 +26,12 @@ REFEREE_COMMENTS = 'referee_comments'
 AUTHOR_RESPONSE = 'author_response'
 TIMESTAMP = 'timestamp'
 
+# Constants for validation
+MIN_TITLE_LENGTH = 1
+MAX_TITLE_LENGTH = 200
+MIN_ABSTRACT_LENGTH = 0
+MAX_ABSTRACT_LENGTH = 5000
+
 STATE_SUBMITTED = 'SUBMITTED'
 STATE_REFEREE_REVIEW = 'REFEREE_REVIEW'
 STATE_REJECTED = 'REJECTED'
@@ -74,8 +80,35 @@ def create_manuscript(
 ) -> dict:
     """
     Create a new manuscript entry and insert it into the MongoDB collection.
+
+    Args:
+        title (str): The manuscript title (5-200 characters)
+        author (str): The author's name
+        author_email (str): The author's email
+        text (str): The manuscript text
+        abstract (str): The manuscript abstract (100-5000 characters)
+        testing (bool): Whether this is a test run
+
+    Raises:
+        ValueError: If title or abstract length requirements are not met
     """
     try:
+        # Validate title length
+        if (len(title.strip()) < MIN_TITLE_LENGTH
+                or len(title.strip()) > MAX_TITLE_LENGTH):
+            raise ValueError(
+                f"Title must be between {MIN_TITLE_LENGTH} and "
+                f"{MAX_TITLE_LENGTH} characters"
+            )
+
+        # Validate abstract length
+        if (len(abstract.strip()) < MIN_ABSTRACT_LENGTH
+                or len(abstract.strip()) > MAX_ABSTRACT_LENGTH):
+            raise ValueError(
+                f"Abstract must be between {MIN_ABSTRACT_LENGTH} and "
+                f"{MAX_ABSTRACT_LENGTH} characters"
+            )
+
         collection = get_collection_name(testing)
         if dbc.fetch_one(
             MANUSCRIPTS_COLLECTION,
