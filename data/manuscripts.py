@@ -652,3 +652,38 @@ def get_manuscript_version(
     except Exception as e:
         print(f"Error getting manuscript version: {e}")
         return {"error": f"An error occurred: {str(e)}"}
+
+
+def get_manuscripts_by_state(state: str, testing=False) -> Dict:
+    """
+    Retrieve all manuscripts in a specific state.
+
+    Args:
+        state (str): The state to filter by (must be one of VALID_STATES)
+        testing (bool): Whether this is a test run
+
+    Returns:
+        Dict: A dictionary containing the list of manuscripts and count
+
+    Raises:
+        ValueError: If the provided state is not valid
+    """
+    try:
+        if state not in VALID_STATES:
+            raise ValueError(f"Invalid state. Must be one of: {VALID_STATES}")
+
+        collection = get_collection_name(testing)
+        manuscripts = list(dbc.fetch_all(collection, {STATE: state}))
+
+        # Convert ObjectId to string for each manuscript
+        for manuscript in manuscripts:
+            manuscript['_id'] = str(manuscript['_id'])
+
+        return {
+            'manuscripts': manuscripts,
+            'count': len(manuscripts)
+        }
+
+    except Exception as e:
+        print(f"Error fetching manuscripts by state: {e}")
+        return {'manuscripts': [], 'count': 0, 'error': str(e)}
