@@ -190,7 +190,6 @@ def test_get_all_manuscripts():
         ms.delete_manuscript(manuscript2["_id"])
 
 
-
 def test_manuscript_multiple_revisions():
     """Test that manuscript properly tracks multiple revisions with version numbers"""
     # Create initial manuscript
