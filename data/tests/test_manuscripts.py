@@ -140,6 +140,43 @@ def test_invalid_state_transition():
         ms.delete_manuscript(manuscript_id)
 
 
+def test_get_all_manuscripts():
+    """Test retrieving all manuscripts"""
+    # Create multiple manuscripts
+    manuscript1 = ms.create_manuscript(
+        title="Test Manuscript 1",
+        author="John Doe",
+        author_email="john@example.com",
+        text="Sample text 1",
+        abstract="Sample abstract 1"
+    )
+    
+    manuscript2 = ms.create_manuscript(
+        title="Test Manuscript 2",
+        author="Jane Doe",
+        author_email="jane@example.com",
+        text="Sample text 2",
+        abstract="Sample abstract 2"
+    )
+    
+    try:
+        # Get all manuscripts
+        all_manuscripts = ms.get_all_manuscripts()
+        
+        # Verify both manuscripts are retrieved
+        assert len(all_manuscripts) >= 2
+        assert manuscript1["_id"] in all_manuscripts
+        assert manuscript2["_id"] in all_manuscripts
+        
+        # Verify manuscript contents
+        assert all_manuscripts[manuscript1["_id"]]["title"] == "Test Manuscript 1"
+        assert all_manuscripts[manuscript2["_id"]]["title"] == "Test Manuscript 2"
+        
+    finally:
+        # Cleanup
+        ms.delete_manuscript(manuscript1["_id"])
+        ms.delete_manuscript(manuscript2["_id"])
+
 
 # # Add this fixture at the top of the test file
 # @pytest.fixture(autouse=True)
