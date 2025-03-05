@@ -199,14 +199,17 @@ def update_state(
         "actor": actor_email
     }
 
+    update_fields = {
+        STATE: new_state,
+        HISTORY: manuscript.get(HISTORY, []) + [history_entry]
+    }
+
     dbc.update_doc(
         MANUSCRIPTS_COLLECTION,
         {"_id": ObjectId(manuscript_id)},
-        {"$set": {
-            STATE: new_state,
-            HISTORY: manuscript[HISTORY] + [history_entry]
-        }}
+        update_fields
     )
+
     return get_manuscript(manuscript_id)
 
 

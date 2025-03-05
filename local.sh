@@ -5,7 +5,6 @@ export PROJ_DIR=$PWD
 export DEBUG=1
 # Running MongoDB in the Cloud
 export CLOUD_MONGO="0"
-export JOURNAL_DB_PW=""
 
 # run our server locally:
 PYTHONPATH=$(pwd):$PYTHONPATH
