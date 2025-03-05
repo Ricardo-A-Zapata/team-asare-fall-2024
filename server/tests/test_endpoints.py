@@ -10,12 +10,13 @@ from http.client import (
 from unittest.mock import patch
 
 import pytest
-
+import datetime
 from data.users import NAME
 import data.text as txt
 import data.db_connect as dbc
 import data.roles as rls
 import server.endpoints as ep
+import data.manuscripts as ms
 
 TEST_CLIENT = None
 
@@ -429,3 +430,31 @@ def test_read_all_texts():
     # Clean up
     for text in test_texts:
         txt.delete(text["key"], testing=True)
+
+@pytest.fixture(autouse=True)
+def setup_test_manuscript_db():
+    dbc.client[dbc.JOURNAL_DB][ms.MANUSCRIPTS_COLLECTION].drop()
+    yield
+    dbc.client[dbc.JOURNAL_DB][ms.MANUSCRIPTS_COLLECTION].drop()
+
+TEST_MANUSCRIPT = {
+    "title": "Test Manuscript",
+    "author": "Test Author", 
+    "author_email": "author@test.com",
+    "text": "random ahhh text",
+    "abstract": "Test abstract"
+}
+
+def test_create_manuscript():
+    resp = TEST_CLIENT.put('/manuscript/create', json=TEST_MANUSCRIPT)
+    assert resp.status_code == OK
+    assert resp.json['manuscript']['title'] == TEST_MANUSCRIPT['title']
+
+def test_get_all_manuscripts():
+    TEST_CLIENT.put('/manuscript/create', json=TEST_MANUSCRIPT)
+    resp = TEST_CLIENT.get('/manuscripts')
+    assert resp.status_code == OK
+    assert resp.json['count'] == 1
+    assert TEST_MANUSCRIPT['title'] in [
+        m['title'] for m in resp.json['manuscripts'].values()
+]

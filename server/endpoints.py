@@ -80,6 +80,16 @@ TEST_CREATE_TEXT = {
     "text": "This is a test text."
 }
 
+MANUSCRIPT_RESPONSE = 'manuscripts'
+
+MANUSCRIPT_CREATE_FLDS = api.model('CreateManuscriptFields', {
+    ms.TITLE: fields.String,
+    ms.AUTHOR: fields.String,
+    ms.AUTHOR_EMAIL: fields.String,
+    ms.TEXT: fields.String,
+    ms.ABSTRACT: fields.String
+})
+
 OK = HTTPStatus.OK
 
 
@@ -741,3 +751,53 @@ class ManuscriptVersion(Resource):
             return {MANUSCRIPT_VERSION_RESP: manuscript}
         except Exception as e:
             handle_request_error('get manuscript version', e)
+
+
+@api.route('/manuscript/create')
+class ManuscriptCreate(Resource):
+    """
+    Create manuscript
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_ACCEPTABLE, 'error')
+    @api.expect(MANUSCRIPT_CREATE_FLDS)
+    def put(self):
+        try:
+            manuscript_data = request.json
+            testing = current_app.config.get(TESTING, False)
+            manuscript = ms.create_manuscript(
+                title=manuscript_data[ms.TITLE],
+                author=manuscript_data[ms.AUTHOR],
+                author_email=manuscript_data[ms.AUTHOR_EMAIL],
+                text=manuscript_data[ms.TEXT],
+                abstract=manuscript_data[ms.ABSTRACT],
+                testing=testing
+            )
+            return {
+                MANUSCRIPT_RESPONSE: 'Manuscript created',
+                'manuscript': manuscript
+            }
+        except ValueError as ve:
+            api.abort(HTTPStatus.NOT_ACCEPTABLE, str(ve))
+        except Exception as e:
+            handle_request_error('create manuscript', e)
+
+
+@api.route('/manuscripts')
+class ManuscriptsAll(Resource):
+    """
+    Get all manuscripts in the system
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.SERVICE_UNAVAILABLE, 'error')
+    def get(self):
+        try:
+            testing = current_app.config.get(TESTING, False)
+            manuscripts = ms.get_all_manuscripts(testing=testing)
+            return {
+                MANUSCRIPT_RESPONSE: manuscripts,
+                'count': len(manuscripts)
+            }
+        except Exception as e:
+            handle_request_error('get all manuscripts',
+                                 e, wz.ServiceUnavailable)
