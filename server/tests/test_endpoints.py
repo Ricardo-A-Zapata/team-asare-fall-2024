@@ -458,3 +458,16 @@ def test_get_all_manuscripts():
     assert TEST_MANUSCRIPT['title'] in [
         m['title'] for m in resp.json['manuscripts'].values()
 ]
+    
+def test_create_invalid_manuscript():
+    #same data as above but no title, so it is invalid
+    invalid_data = {**TEST_MANUSCRIPT, "title": ""}
+    resp = TEST_CLIENT.put('/manuscript/create', json=invalid_data)
+    assert resp.status_code == NOT_ACCEPTABLE
+    assert "Title must be between" in resp.json['message']
+    # long abstract
+    invalid_data = {**TEST_MANUSCRIPT, 
+                   "abstract": "a" * (ms.MAX_ABSTRACT_LENGTH + 1)}
+    resp = TEST_CLIENT.put('/manuscript/create', json=invalid_data)
+    assert resp.status_code == NOT_ACCEPTABLE
+    assert "Abstract must be between 0 and 5000 characters" in resp.json['message']
