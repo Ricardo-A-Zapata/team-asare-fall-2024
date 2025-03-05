@@ -16,7 +16,7 @@ REFEREES = 'referees'
 TEXT = 'text'
 ABSTRACT = 'abstract'
 HISTORY = 'history'
-EDITOR = 'editor'
+EDITOR_EMAIL = 'editor'
 REPORT = 'report'
 VERDICT = 'verdict'
 VERSION = 'version'
@@ -145,7 +145,7 @@ def create_manuscript(
                     "actor": author_email,
                 }
             ],
-            EDITOR: None,
+            EDITOR_EMAIL: None,
         }
 
         result = dbc.insert_one(collection, manuscript)
@@ -216,7 +216,7 @@ def assign_editor(manuscript_id: str, editor_email: str) -> Optional[dict]:
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
             {"_id": ObjectId(manuscript_id)},
-            {"$set": {EDITOR: editor_email}}
+            {"$set": {EDITOR_EMAIL: editor_email}}
         )
         return get_manuscript(manuscript_id)
     except Exception as e:
