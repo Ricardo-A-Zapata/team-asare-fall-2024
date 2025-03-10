@@ -471,3 +471,15 @@ def test_create_invalid_manuscript():
     resp = TEST_CLIENT.put('/manuscript/create', json=invalid_data)
     assert resp.status_code == NOT_ACCEPTABLE
     assert "Abstract must be between 0 and 5000 characters" in resp.json['message']
+
+def test_create_manuscript_no_title():
+    # Missing 'title' completely, not just empty
+    invalid_data = {
+        "author": "Test Author",
+        "author_email": "author@test.com",
+        "text": "Valid text content",
+        "abstract": "Valid abstract"
+    }
+    resp = TEST_CLIENT.put('/manuscript/create', json=invalid_data)
+    assert resp.status_code == NOT_ACCEPTABLE
+    assert "'title'" in resp.json['message']
