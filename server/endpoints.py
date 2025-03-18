@@ -801,3 +801,40 @@ class ManuscriptsAll(Resource):
         except Exception as e:
             handle_request_error('get all manuscripts',
                                  e, wz.ServiceUnavailable)
+
+
+@api.route('/manuscript/delete/<manuscript_id>')
+class ManuscriptDelete(Resource):
+    """
+    Delete a manuscript by ID.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'Manuscript not found')
+    @api.response(HTTPStatus.FORBIDDEN, 'Cannot delete a published manuscript')
+    def delete(self, manuscript_id):
+        """
+        Deletes a manuscript by its ID.
+        """
+        try:
+            testing = current_app.config.get(TESTING, False)
+            manuscript = ms.get_manuscript(manuscript_id, testing=testing)
+
+            if not manuscript:
+                raise wz.NotFound(f'Manuscript {manuscript_id} not found.')
+
+            # Prevent deletion if manuscript is in PUBLISHED state
+            if manuscript.get(ms.STATE) == ms.STATE_PUBLISHED:
+                raise wz.Forbidden('Cannot delete a published manuscript.')
+
+            deleted = ms.delete_manuscript(manuscript_id, testing=testing)
+
+            if "error" in deleted:
+                raise wz.NotFound(deleted["error"])
+
+            return {'message': 'Manuscript deleted successfully',
+                    'deleted_manuscript': deleted}
+
+        except wz.Forbidden as e:
+            return {'error': str(e)}, HTTPStatus.FORBIDDEN
+        except Exception as e:
+            handle_request_error('delete manuscript', e, wz.NotFound)

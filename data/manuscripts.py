@@ -339,20 +339,26 @@ def get_all_manuscripts(testing=False) -> Dict:
 def delete_manuscript(manuscript_id: str, testing=False) -> Optional[dict]:
     """
     Delete a manuscript by ID from database.
-    Returns the deleted manuscript if successful, None if not found.
+    Returns the deleted manuscript if successful,
+    or an error message if not found
     """
     try:
         manuscript = get_manuscript(manuscript_id, testing=testing)
-        if manuscript:
-            dbc.del_one(
-                MANUSCRIPTS_COLLECTION,
-                {"_id": ObjectId(manuscript_id)},
-                db=dbc.JOURNAL_DB,
-                testing=testing
-            )
-            return manuscript
-        else:
+
+        if not manuscript:
             return {"error": "Manuscript not found"}
+
+        if manuscript.get(STATE) == STATE_PUBLISHED:
+            return {"error": "Cannot delete a published manuscript"}
+
+        dbc.del_one(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            db=dbc.JOURNAL_DB,
+            testing=testing
+        )
+        return manuscript
+
     except Exception as e:
         print(f"Error deleting manuscript: {e}")
         return {"error": f"Invalid manuscript ID or not found: {str(e)}"}
