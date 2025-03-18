@@ -483,3 +483,42 @@ def test_create_manuscript_no_title():
     resp = TEST_CLIENT.put('/manuscript/create', json=invalid_data)
     assert resp.status_code == NOT_ACCEPTABLE
     assert "'title'" in resp.json['message']
+
+TEST_MANUSCRIPT_ID = "60d21b4667d0d8992e610c85"
+
+def test_delete_manuscript_success():
+    """Test successful deletion of a manuscript."""
+    with patch("data.manuscripts.get_manuscript") as mock_get, \
+         patch("data.manuscripts.delete_manuscript") as mock_delete:
+
+        mock_get.return_value = {"_id": TEST_MANUSCRIPT_ID, "state": ms.STATE_SUBMITTED}
+        mock_delete.return_value = {"_id": TEST_MANUSCRIPT_ID, "message": "Deleted"}
+
+        resp = TEST_CLIENT.delete(f"/manuscript/delete/{TEST_MANUSCRIPT_ID}")
+        assert resp.status_code == OK
+        assert "Manuscript deleted successfully" in resp.json["message"]
+
+
+def test_delete_manuscript_not_found():
+    """Test deletion attempt when the manuscript is not found."""
+    with patch("data.manuscripts.get_manuscript") as mock_get:
+        mock_get.return_value = None
+
+        resp = TEST_CLIENT.delete(f"/manuscript/delete/{TEST_MANUSCRIPT_ID}")
+        assert resp.status_code == NOT_FOUND
+
+        # Check for error message in response
+        resp_json = resp.get_json()
+        assert resp_json is not None, "Response JSON is None"
+        assert "error" in resp_json or "message" in resp_json, f"Unexpected response: {resp_json}"
+        assert "not found" in resp_json.get("error", resp_json.get("message", ""))
+
+
+def test_delete_manuscript_published():
+    """Test deletion attempt of a published manuscript, which should be forbidden."""
+    with patch("data.manuscripts.get_manuscript") as mock_get:
+        mock_get.return_value = {"_id": TEST_MANUSCRIPT_ID, "state": ms.STATE_PUBLISHED}
+
+        resp = TEST_CLIENT.delete(f"/manuscript/delete/{TEST_MANUSCRIPT_ID}")
+        assert resp.status_code == FORBIDDEN
+        assert "Cannot delete a published manuscript" in resp.json["error"]
