@@ -838,3 +838,27 @@ class ManuscriptDelete(Resource):
             return {'error': str(e)}, HTTPStatus.FORBIDDEN
         except Exception as e:
             handle_request_error('delete manuscript', e, wz.NotFound)
+
+
+@api.route('/roles/read')
+class RolesRead(Resource):
+    """
+    Returns all available roles for the system in a standardized format.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    def get(self):
+        """
+        Returns all roles in the format:
+        {
+            "roles": {
+                "AU": "Author",
+                "ED": "Editor",
+                "RE": "Referee"
+            }
+        }
+        """
+        try:
+            roles = rls.get_roles()
+            return {"roles": roles}
+        except Exception as e:
+            handle_request_error('read roles', e)
