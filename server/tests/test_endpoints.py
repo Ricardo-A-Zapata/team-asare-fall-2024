@@ -440,12 +440,6 @@ def test_read_all_texts():
     for text in test_texts:
         txt.delete(text["key"], testing=True)
 
-@pytest.fixture(autouse=True)
-def setup_test_manuscript_db():
-    dbc.client[dbc.JOURNAL_DB][ms.MANUSCRIPTS_COLLECTION].drop()
-    yield
-    dbc.client[dbc.JOURNAL_DB][ms.MANUSCRIPTS_COLLECTION].drop()
-
 TEST_MANUSCRIPT = {
     "title": "Test Manuscript",
     "author": "Test Author", 
@@ -458,15 +452,15 @@ def test_create_manuscript():
     resp = TEST_CLIENT.put('/manuscript/create', json=TEST_MANUSCRIPT)
     assert resp.status_code == OK
     assert resp.json['manuscript']['title'] == TEST_MANUSCRIPT['title']
+    TEST_CLIENT.delete(f"/manuscript/delete/{resp.json['manuscript']['_id']}")
 
 def test_get_all_manuscripts():
-    TEST_CLIENT.put('/manuscript/create', json=TEST_MANUSCRIPT)
+    _id = TEST_CLIENT.put('/manuscript/create', json=TEST_MANUSCRIPT).json['manuscript']['_id']
     resp = TEST_CLIENT.get('/manuscripts')
     assert resp.status_code == OK
-    assert resp.json['count'] == 1
-    assert TEST_MANUSCRIPT['title'] in [
-        m['title'] for m in resp.json['manuscripts'].values()
-]
+    assert resp.json['count'] >= 1
+    assert TEST_MANUSCRIPT['title'] in [m['title'] for m in resp.json['manuscripts'].values()]
+    TEST_CLIENT.delete(f'/manuscript/delete/{_id}')
     
 def test_create_invalid_manuscript():
     #same data as above but no title, so it is invalid
