@@ -531,3 +531,10 @@ def test_delete_manuscript_published():
         resp = TEST_CLIENT.delete(f"/manuscript/delete/{TEST_MANUSCRIPT_ID}")
         assert resp.status_code == FORBIDDEN
         assert "Cannot delete a published manuscript" in resp.json["error"]
+
+def test_user_count():
+    resp = TEST_CLIENT.get(ep.USER_COUNT_EP)
+    assert resp.status_code == OK
+    resp = resp.get_json()
+    assert ep.USER_COUNT_RESP in resp
+    assert resp[ep.USER_COUNT_RESP] >= 0

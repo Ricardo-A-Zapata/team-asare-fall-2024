@@ -61,6 +61,8 @@ ROLE_DELETE_RESP = 'Role Deleted'
 USER_GET_MASTHEAD = '/masthead/get'
 USER_GET_MASTHEAD_RESP = 'Masthead'
 
+USER_COUNT_EP = '/user/count'
+USER_COUNT_RESP = 'Count'
 # Add this model if not already present
 ROLE_FIELDS = api.model('RoleFields', {
     'code': fields.String,
@@ -862,3 +864,10 @@ class RolesRead(Resource):
             return {"roles": roles}
         except Exception as e:
             handle_request_error('read roles', e)
+
+
+@api.route(USER_COUNT_EP)
+class UserCount(Resource):
+    @api.response(HTTPStatus.OK, 'Success')
+    def get(self):
+        return {USER_COUNT_RESP: len(usr.read())}
