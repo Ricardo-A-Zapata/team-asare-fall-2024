@@ -71,6 +71,7 @@ ROLE_FIELDS = api.model('RoleFields', {
 USER_CREATE_FLDS = api.model('AddNewUserEntry', {
     usr.NAME: fields.String,
     usr.EMAIL: fields.String,
+    usr.PASSWORD: fields.String,
     usr.AFFILIATION: fields.String,
     usr.ROLES: fields.List(fields.String, required=False)
 })
@@ -134,7 +135,9 @@ class UserCreate(Resource):
             affiliation = request.json.get(usr.AFFILIATION)
             roles = request.json.get(usr.ROLES, [])
             testing = current_app.config.get(TESTING, False)
-            ret = usr.create(name, email, affiliation, roles, testing=testing)
+            password = request.json.get(usr.PASSWORD)
+            ret = usr.create(name, email, password,
+                             affiliation, roles, testing=testing)
             return {USERS_RESP: 'User added!', RETURN: ret}
         except Exception as err:
             handle_request_error('add user', err)

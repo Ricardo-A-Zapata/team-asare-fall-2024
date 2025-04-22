@@ -9,6 +9,7 @@ import data.db_connect as dbc
 NAME = 'name'
 ROLES = 'roleCodes'
 EMAIL = 'email'
+PASSWORD = 'password'
 AFFILIATION = 'affiliation'
 TEST_EMAIL = 'ejc369@nyu.edu'
 
@@ -28,9 +29,11 @@ def get_collection_name(testing=False):
 def create(
         name: str,
         email: str,
+        password: str,
         affiliation: str,
         roles: list = None,
-        testing=False):
+        testing=False,
+        ):
     """
     Create a new user in MongoDB.
     First validates the user data, then inserts if valid.
@@ -52,13 +55,13 @@ def create(
         collection = get_collection_name(testing)
         if dbc.fetch_one(collection, {EMAIL: email}):
             raise ValueError(f"User with email {email} already exists")
-
         # Create user document
         user_doc = {
             NAME: name,
             EMAIL: email,
+            PASSWORD: password,
             AFFILIATION: affiliation,
-            ROLES: roles if roles is not None else []
+            ROLES: roles if roles is not None else [],
         }
         dbc.insert_one(collection, user_doc)
         return email

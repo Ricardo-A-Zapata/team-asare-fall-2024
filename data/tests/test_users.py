@@ -22,6 +22,7 @@ SHORT_TLD = 'bademail@gmail.c'
 LONG_TLD = 'bademail@gmail.commmmmm'
 MIXED_CASE = 'Valid.Email@Example.COM'
 MIN_LENGTH = 'z@z.co'
+TEST_PASSWORD = 'pass'
 
 # Add these constants at the top with other constants
 MH_FIELDS = [usrs.NAME, usrs.AFFILIATION]
@@ -42,7 +43,7 @@ def setup_test_db():
     rls.seed_roles(testing=True)
 
     # Create a test user
-    usrs.create('Eugene Callahan', usrs.TEST_EMAIL, 'NYU', testing=True)
+    usrs.create('Eugene Callahan', usrs.TEST_EMAIL, TEST_PASSWORD, 'NYU', testing=True)
     yield
 
     # Cleanup after tests
@@ -52,7 +53,7 @@ def setup_test_db():
 
 @pytest.fixture(scope='function')
 def temp_user():
-    usrs.create('Billy Bob', TEMP_EMAIL, 'NYU', testing=True)
+    usrs.create('Billy Bob', TEMP_EMAIL, TEST_PASSWORD, 'NYU', testing=True)
     yield TEMP_EMAIL
     users = usrs.read(testing=True)
     if TEMP_EMAIL in users:
@@ -74,7 +75,7 @@ def test_read():
 def test_create():
     users = usrs.read(testing=True)
     assert TEST_EMAIL not in users
-    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_PASSWORD, TEST_AFFILIATION, testing=True)
     users = usrs.read(testing=True)
     assert TEST_EMAIL in users
     assert users[TEST_EMAIL][usrs.NAME] == TEST_NAME
@@ -82,7 +83,7 @@ def test_create():
 
 def test_create_duplicate():
     with pytest.raises(ValueError):
-        usrs.create('Do not care about name', usrs.TEST_EMAIL, 
+        usrs.create('Do not care about name', usrs.TEST_EMAIL, TEST_PASSWORD,
                    'Or affiliation', testing=True)
 
 
@@ -90,7 +91,7 @@ def test_update():
     NEW_NAME = "Updated Name"
     NEW_AFFILIATION = "Updated University"
     
-    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_PASSWORD, TEST_AFFILIATION, testing=True)
     user = usrs.read_one(TEST_EMAIL, testing=True)
     assert user[usrs.NAME] == TEST_NAME
     
@@ -101,7 +102,7 @@ def test_update():
 
 
 def test_delete():
-    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_PASSWORD, TEST_AFFILIATION, testing=True)
     assert usrs.read_one(TEST_EMAIL, testing=True) is not None
     
     usrs.delete(TEST_EMAIL, testing=True)
@@ -201,7 +202,7 @@ def test_create_mh_rec():
 def test_add_role():
     """Test adding a role to a user"""
     # Create test user
-    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_PASSWORD, TEST_AFFILIATION, testing=True)
     
     # Add role
     ret = usrs.add_role(TEST_EMAIL, TEST_ROLE_CODE, testing=True)
@@ -218,7 +219,7 @@ def test_add_role():
 def test_update_with_roles():
     """Test updating a user with roles"""
     # Create test user
-    usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, testing=True)
+    usrs.create(TEST_NAME, TEST_EMAIL, TEST_PASSWORD, TEST_AFFILIATION, testing=True)
     
     # Update with roles
     new_name = "Updated Name"
@@ -241,7 +242,7 @@ def test_create_with_roles():
     invalid_roles = ["INVALID_ROLE"]
 
     # Test creating a user with valid roles
-    ret = usrs.create(TEST_NAME, TEST_EMAIL, TEST_AFFILIATION, valid_roles, testing=True)
+    ret = usrs.create(TEST_NAME, TEST_EMAIL, TEST_PASSWORD, TEST_AFFILIATION, valid_roles, testing=True)
     assert ret == TEST_EMAIL
 
     # Verify user was created with valid roles
@@ -252,7 +253,7 @@ def test_create_with_roles():
 
     # Test creating a user with invalid roles
     with pytest.raises(ValueError):
-        usrs.create(TEST_NAME, "invalid@example.com", TEST_AFFILIATION, invalid_roles, testing=True)
+        usrs.create(TEST_NAME, "invalid@example.com", TEST_PASSWORD, TEST_AFFILIATION, invalid_roles, testing=True)
 
     # Clean up
     usrs.delete(TEST_EMAIL, testing=True)

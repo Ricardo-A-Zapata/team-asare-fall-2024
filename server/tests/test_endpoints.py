@@ -66,6 +66,7 @@ def test_create():
     test = {
         "name": "test_user",
         "email": "test@user.com",
+        "password:": "pass",
         "affiliation": "Test Uni",
         "role": "TR",
     }
