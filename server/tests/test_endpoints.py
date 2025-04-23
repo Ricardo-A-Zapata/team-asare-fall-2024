@@ -66,7 +66,7 @@ def test_create():
     test = {
         "name": "test_user",
         "email": "test@user.com",
-        "password:": "pass",
+        "password": "pass",
         "affiliation": "Test Uni",
         "role": "TR",
     }
@@ -533,3 +533,26 @@ def test_user_count():
     resp = resp.get_json()
     assert ep.USER_COUNT_RESP in resp
     assert resp[ep.USER_COUNT_RESP] >= 0
+
+def test_login():
+    test = {
+        "name": "test_user",
+        "email": "test@user.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+        "role": "TR",
+    }
+    ret = TEST_CLIENT.put(ep.USERS_EP, json=test)
+    assert ret.status_code == OK
+    # Correct Login
+    test['password']
+    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password": test['password']})
+    assert ret.status_code == OK
+    assert ret.get_json()[ep.USER_LOGIN_RESP] == "Success"
+    # Incorrect Login - Email
+    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":'WRONG@EMAIL.COM', "password":'TEST_PASSWORD'})
+    assert ret.status_code == NOT_ACCEPTABLE
+    # Incorrect Login - Password
+    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password": test['password']+"wrong"})
+    assert ret.status_code == NOT_ACCEPTABLE
+    TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')

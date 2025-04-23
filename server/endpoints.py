@@ -46,6 +46,9 @@ USER_UPDATE_RESP = 'Status'
 USER_REMOVE_ROLE_EP = '/user/remove_role'
 USER_REMOVE_ROLE_RESP = 'Role removed from user'
 
+USER_LOGIN_EP = '/login'
+USER_LOGIN_RESP = 'Status'
+
 ROLE_READ_EP = '/role/read'
 ROLE_READ_RESP = 'Role'
 
@@ -113,6 +116,32 @@ def create_response(message_type: str, data=None):
     """
     response = {message_type: data if data is not None else 'success'}
     return response
+
+
+USER_LOGIN_FLDS = api.model('UserLogin', {
+    usr.EMAIL: fields.String,
+    usr.PASSWORD: fields.String,
+})
+
+
+@api.route(USER_LOGIN_EP)
+class UserLogin(Resource):
+    """
+    Authenticate a user
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_ACCEPTABLE, 'Not acceptable')
+    @api.expect(USER_LOGIN_FLDS)
+    def post(self):
+        try:
+            email = request.json.get(usr.EMAIL)
+            password = request.json.get(usr.PASSWORD)
+            if usr.login(email, password):
+                return {USER_LOGIN_RESP: 'Success'}
+            else:
+                raise Exception(f"{password} is incorrect password")
+        except Exception as err:
+            handle_request_error('authenticate', err)
 
 
 @api.route(USERS_EP)

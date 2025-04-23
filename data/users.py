@@ -241,6 +241,17 @@ def add_role(email: str, role: str, testing=False) -> bool:
         raise e
 
 
+def login(email: str, password: str) -> bool:
+    try:
+        user = read_one(email)
+        if not user:
+            raise KeyError(f'User with email "{email}" not found')
+        return user[PASSWORD] == password
+    except Exception as e:
+        print(f"Error in login: {str(e)}")
+        raise e
+
+
 def remove_role(email: str, role: str, testing=False) -> bool:
     """
     Remove a role from a user.
