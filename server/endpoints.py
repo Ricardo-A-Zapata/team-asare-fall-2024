@@ -66,6 +66,8 @@ USER_GET_MASTHEAD_RESP = 'Masthead'
 
 USER_COUNT_EP = '/user/count'
 USER_COUNT_RESP = 'Count'
+PASSWORD_UPDATE_EP = '/user/password_update'
+PASSWORD_UPDATE_RESP = 'Status'
 # Add this model if not already present
 ROLE_FIELDS = api.model('RoleFields', {
     'code': fields.String,
@@ -203,6 +205,34 @@ class UserUpdate(Resource):
             return {USER_UPDATE_RESP: 'Updated Successfully', RETURN: ret}
         except Exception as err:
             handle_request_error('update user', err)
+
+
+PASSWORD_UPDATE_FLDS = api.model('UpdateUserPassword', {
+    usr.EMAIL: fields.String,
+    usr.PASSWORD: fields.String,
+})
+
+
+@api.route(PASSWORD_UPDATE_EP)
+class PasswordUpdate(Resource):
+    """
+    Update a user.
+    """
+    @api.response(HTTPStatus.OK, 'Success')
+    @api.response(HTTPStatus.NOT_FOUND, 'User not found')
+    @api.response(HTTPStatus.NOT_ACCEPTABLE, 'Invalid Fields')
+    @api.expect(PASSWORD_UPDATE_FLDS)
+    def post(self):
+        try:
+            email = request.json.get(usr.EMAIL)
+            new_password = request.json.get(usr.PASSWORD)
+            testing = current_app.config.get(TESTING, False)
+            usr.change_password(email, new_password, testing=testing)
+            return {PASSWORD_UPDATE_RESP: "Password Changed!"}
+        except KeyError as err:
+            handle_request_error('update password', err)
+        except Exception as err:
+            handle_request_error('update password', err)
 
 
 @api.route(f'{USER_DELETE_EP}/<email>')

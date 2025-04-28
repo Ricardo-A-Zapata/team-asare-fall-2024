@@ -266,3 +266,15 @@ def test_login():
         usrs.login(TEST_EMAIL + '.', TEST_PASSWORD)
     assert usrs.login(TEST_EMAIL, TEST_PASSWORD+'.') == False
     usrs.delete(TEST_EMAIL, testing=True)
+
+def test_password_update():
+    ret = usrs.create(TEST_NAME, TEST_EMAIL, TEST_PASSWORD, TEST_AFFILIATION, testing=True)
+    assert ret == TEST_EMAIL
+    assert usrs.login(TEST_EMAIL, TEST_PASSWORD) == True
+    with pytest.raises(Exception):
+        usrs.change_password(TEST_EMAIL + '.', TEST_PASSWORD)
+    ret = usrs.change_password(TEST_EMAIL, TEST_PASSWORD+'.')
+    assert ret == True
+    assert usrs.login(TEST_EMAIL, TEST_PASSWORD) == False
+    assert usrs.login(TEST_EMAIL, TEST_PASSWORD+'.') == True
+    usrs.delete(TEST_EMAIL, testing=True)

@@ -540,12 +540,10 @@ def test_login():
         "email": "test@user.com",
         "password": "pass",
         "affiliation": "Test Uni",
-        "role": "TR",
     }
     ret = TEST_CLIENT.put(ep.USERS_EP, json=test)
     assert ret.status_code == OK
     # Correct Login
-    test['password']
     ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password": test['password']})
     assert ret.status_code == OK
     assert ret.get_json()[ep.USER_LOGIN_RESP] == "Success"
@@ -556,3 +554,26 @@ def test_login():
     ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password": test['password']+"wrong"})
     assert ret.status_code == NOT_ACCEPTABLE
     TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
+
+def test_change_password():
+    test = {
+        "name": "test_user",
+        "email": "test@user.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+    }
+    ret = TEST_CLIENT.put(ep.USERS_EP, json=test)
+    assert ret.status_code == OK
+    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json={"email":'WRONG@EMAIL.COM', "password":'TEST_PASSWORD'})
+    assert ret.status_code == NOT_ACCEPTABLE
+    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json={"password":'TEST_PASSWORD'})
+    assert ret.status_code == NOT_ACCEPTABLE
+    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json={"email":'test@user.com', "password":'TEST_PASSWORD'})
+    assert ret.status_code == OK
+    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password": test['password']})
+    assert ret.status_code == NOT_ACCEPTABLE
+    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password":'TEST_PASSWORD'})
+    assert ret.status_code == OK
+    TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
+
+    

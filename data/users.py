@@ -272,3 +272,20 @@ def remove_role(email: str, role: str, testing=False) -> bool:
     except Exception as e:
         print(f"Error in remove_role: {str(e)}")
         raise e
+
+
+def change_password(email: str, password: str, testing=False) -> bool:
+    try:
+        collection = get_collection_name(testing)
+        existing = dbc.fetch_one(collection, {EMAIL: email})
+        if not existing:
+            raise KeyError(f"User with email {email} not found")
+
+        update_doc = {
+            EMAIL: email,
+            PASSWORD: password,
+        }
+        return bool(dbc.update_doc(collection, {EMAIL: email}, update_doc))
+    except Exception as e:
+        print(f"Error in update: {str(e)}")
+        raise e
