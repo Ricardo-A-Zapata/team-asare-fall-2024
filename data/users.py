@@ -197,7 +197,8 @@ def get_masthead():
             if ROLES in user and role_code in user[ROLES]:
                 users_with_role.append({
                     NAME: user[NAME],
-                    AFFILIATION: user[AFFILIATION]
+                    AFFILIATION: user[AFFILIATION],
+                    EMAIL: user[EMAIL]
                 })
         masthead[role_text] = users_with_role
     return masthead
