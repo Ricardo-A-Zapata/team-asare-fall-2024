@@ -88,8 +88,17 @@ def update_doc(
     """
     Update a document in the collection with the
      specified filters and update dictionary.
+
+    If update_dict already contains MongoDB operators (keys starting with $),
+    it will be used directly. Otherwise, it will be wrapped with $set.
     """
-    return client[db][collection].update_one(filters, {'$set': update_dict})
+    if any(key.startswith('$') for key in update_dict.keys()):
+        # Already contains MongoDB operators, use as is
+        return client[db][collection].update_one(filters, update_dict)
+    else:
+        # Wrap with $set for regular field updates
+        return client[db][collection].update_one(filters,
+                                                 {'$set': update_dict})
 
 
 def fetch_all(collection, db=JOURNAL_DB, testing=False):

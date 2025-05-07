@@ -224,13 +224,13 @@ def test_update_with_roles():
     # Update with roles
     new_name = "Updated Name"
     new_roles = [TEST_ROLE_CODE]
-    ret = usrs.update(new_name, TEST_EMAIL, TEST_AFFILIATION, new_roles, testing=True)
+    ret = usrs.update(new_name, TEST_EMAIL, TEST_AFFILIATION, roleCodes=new_roles, testing=True)
     assert ret is True
     
     # Verify update
     user = usrs.read_one(TEST_EMAIL, testing=True)
     assert user[usrs.NAME] == new_name
-    assert TEST_ROLE_CODE in user[usrs.ROLES]
+    assert TEST_ROLE_CODE in user.get('roleCodes', [])
     
     # Clean up
     usrs.delete(TEST_EMAIL, testing=True)

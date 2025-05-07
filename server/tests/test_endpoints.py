@@ -17,6 +17,7 @@ import data.db_connect as dbc
 import data.roles as rls
 import server.endpoints as ep
 import data.manuscripts as ms
+from http import HTTPStatus
 
 TEST_CLIENT = None
 
@@ -257,11 +258,21 @@ def test_read_roles():
 
 def test_read_roles_plural():
     """Test the /roles/read endpoint returns roles in correct format"""
-    resp = TEST_CLIENT.get('/roles')
-    assert resp.status_code == OK
-    #assert 'roles' in resp.json
-    #assert isinstance(resp.json['roles'], dict)
-    assert len(resp.json) > 0  # At least one role should exist
+    # Create a test role first
+    test_role = {
+        "code": TEST_ROLE_CODE,
+        "role": TEST_ROLE_NAME
+    }
+    TEST_CLIENT.post(ep.ROLE_CREATE_EP, json=test_role)
+
+    try:
+        resp = TEST_CLIENT.get('/roles')
+        assert resp.status_code == OK
+        assert len(resp.json) > 0  # At least one role should exist
+        assert TEST_ROLE_CODE in resp.json  # Our test role should be there
+    finally:
+        # Clean up
+        TEST_CLIENT.delete(f'{ep.ROLE_DELETE_EP}/{TEST_ROLE_CODE}')
 
 
 def test_create_role():
@@ -564,16 +575,275 @@ def test_change_password():
     }
     ret = TEST_CLIENT.put(ep.USERS_EP, json=test)
     assert ret.status_code == OK
-    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json={"email":'WRONG@EMAIL.COM', "password":'TEST_PASSWORD'})
+    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json=
+                           {"email":'WRONG@EMAIL.COM', "password":'TEST_PASSWORD'})
     assert ret.status_code == NOT_ACCEPTABLE
-    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json={"password":'TEST_PASSWORD'})
+    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json=
+                           {"password":'TEST_PASSWORD'})
     assert ret.status_code == NOT_ACCEPTABLE
-    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json={"email":'test@user.com', "password":'TEST_PASSWORD'})
+    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json=
+                           {"email":'test@user.com', "password":'TEST_PASSWORD'})
     assert ret.status_code == OK
-    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password": test['password']})
+    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json=
+                           {"email":test['email'], "password": test['password']})
     assert ret.status_code == NOT_ACCEPTABLE
-    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password":'TEST_PASSWORD'})
+    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json=
+                           {"email":test['email'], "password":'TEST_PASSWORD'})
     assert ret.status_code == OK
     TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
+
+def test_assign_referee():
+    """Test if an editor can assign a referee to a manuscript."""
+    # First create a manuscript
+    manuscript_resp = TEST_CLIENT.put('/manuscript/create', json=TEST_MANUSCRIPT)
+    assert manuscript_resp.status_code == OK
+    manuscript_id = manuscript_resp.json['manuscript']['_id']
+
+    # Create a referee user
+    referee = {
+        "name": "Test Referee",
+        "email": "referee@test.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+        "roles": ["RE"]
+    }
+    referee_resp = TEST_CLIENT.put(ep.USERS_EP, json=referee)
+    assert referee_resp.status_code == OK
+    # Patch in roleCodes for backend compatibility
+    TEST_CLIENT.put(ep.USER_UPDATE_EP, json={
+        "name": referee["name"],
+        "email": referee["email"],
+        "affiliation": referee["affiliation"],
+        "roleCodes": ["RE"]
+    })
+
+    # Create an editor user
+    editor = {
+        "name": "Test Editor",
+        "email": "editor@test.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+        "roles": ["ED"]
+    }
+    editor_resp = TEST_CLIENT.put(ep.USERS_EP, json=editor)
+    assert editor_resp.status_code == OK
+    # Patch in roleCodes for backend compatibility
+    TEST_CLIENT.put(ep.USER_UPDATE_EP, json={
+        "name": editor["name"],
+        "email": editor["email"],
+        "affiliation": editor["affiliation"],
+        "roleCodes": ["ED"]
+    })
+
+    try:
+        # Test editor assigning referee
+        resp = TEST_CLIENT.put(
+            f'/manuscript/referee/{manuscript_id}',
+            json={
+                "referee_email": referee["email"]
+            },
+            headers={"X-User-Email": editor["email"]}
+        )
+        assert resp.status_code == OK
+        print("DEBUG: Referee assignment response =", resp.json)
+        assert resp.json['Manuscript Referee']['referee_email'] == referee["email"]
+
+    finally:
+        # Clean up
+        TEST_CLIENT.delete(f'/manuscript/delete/{manuscript_id}')
+        TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{referee["email"]}')
+        TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{editor["email"]}')
+
+def test_referee_accept_decision():
+    """Test if a referee can accept a manuscript."""
+    # First create a manuscript
+    manuscript_resp = TEST_CLIENT.put('/manuscript/create', json=TEST_MANUSCRIPT)
+    assert manuscript_resp.status_code == OK
+    manuscript_id = manuscript_resp.json['manuscript']['_id']
+
+    # Create a referee user
+    referee = {
+        "name": "Test Referee",
+        "email": "referee@test.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+        "roles": ["RE"]
+    }
+    referee_resp = TEST_CLIENT.put(ep.USERS_EP, json=referee)
+    assert referee_resp.status_code == OK
+    # Patch in roleCodes for backend compatibility
+    TEST_CLIENT.put(ep.USER_UPDATE_EP, json={
+        "name": referee["name"],
+        "email": referee["email"],
+        "affiliation": referee["affiliation"],
+        "roleCodes": ["RE"]
+    })
+
+    # Create an editor user
+    editor = {
+        "name": "Test Editor",
+        "email": "editor@test.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+        "roles": ["ED"]
+    }
+    editor_resp = TEST_CLIENT.put(ep.USERS_EP, json=editor)
+    assert editor_resp.status_code == OK
+    # Patch in roleCodes for backend compatibility
+    TEST_CLIENT.put(ep.USER_UPDATE_EP, json={
+        "name": editor["name"],
+        "email": editor["email"],
+        "affiliation": editor["affiliation"],
+        "roleCodes": ["ED"]
+    })
+
+    try:
+        # First assign the referee (as editor)
+        assign_resp = TEST_CLIENT.put(
+            f'/manuscript/referee/{manuscript_id}',
+            json={
+                "referee_email": referee["email"]
+            },
+            headers={"X-User-Email": editor["email"]}
+        )
+        assert assign_resp.status_code == OK
+
+        # Test referee accepting manuscript
+        accept_resp = TEST_CLIENT.put(
+            f'/manuscript/state/{manuscript_id}',
+            json={
+                "state": "ACCEPTED"
+            },
+            headers={"X-User-Email": referee["email"]}
+        )
+        assert accept_resp.status_code == OK
+        assert accept_resp.json['Manuscript State']['state'] == "ACCEPTED"
+
+    finally:
+        # Clean up
+        TEST_CLIENT.delete(f'/manuscript/delete/{manuscript_id}')
+        TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{referee["email"]}')
+        TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{editor["email"]}')
+
+def test_referee_reject_decision():
+    """Test if a referee can reject a manuscript."""
+    # First create a manuscript
+    manuscript_resp = TEST_CLIENT.put('/manuscript/create', json=TEST_MANUSCRIPT)
+    assert manuscript_resp.status_code == OK
+    manuscript_id = manuscript_resp.json['manuscript']['_id']
+
+    # Create a referee user
+    referee = {
+        "name": "Test Referee",
+        "email": "referee@test.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+        "roles": ["RE"]
+    }
+    referee_resp = TEST_CLIENT.put(ep.USERS_EP, json=referee)
+    assert referee_resp.status_code == OK
+    # Patch in roleCodes for backend compatibility
+    TEST_CLIENT.put(ep.USER_UPDATE_EP, json={
+        "name": referee["name"],
+        "email": referee["email"],
+        "affiliation": referee["affiliation"],
+        "roleCodes": ["RE"]
+    })
+
+    # Create an editor user
+    editor = {
+        "name": "Test Editor",
+        "email": "editor@test.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+        "roles": ["ED"]
+    }
+    editor_resp = TEST_CLIENT.put(ep.USERS_EP, json=editor)
+    assert editor_resp.status_code == OK
+    # Patch in roleCodes for backend compatibility
+    TEST_CLIENT.put(ep.USER_UPDATE_EP, json={
+        "name": editor["name"],
+        "email": editor["email"],
+        "affiliation": editor["affiliation"],
+        "roleCodes": ["ED"]
+    })
+
+    try:
+        # First assign the referee (as editor)
+        assign_resp = TEST_CLIENT.put(
+            f'/manuscript/referee/{manuscript_id}',
+            json={
+                "referee_email": referee["email"]
+            },
+            headers={"X-User-Email": editor["email"]}
+        )
+        assert assign_resp.status_code == OK
+
+        # Test referee rejecting manuscript
+        reject_resp = TEST_CLIENT.put(
+            f'/manuscript/state/{manuscript_id}',
+            json={
+                "state": "REJECTED"
+            },
+            headers={"X-User-Email": referee["email"]}
+        )
+        assert reject_resp.status_code == OK
+        assert reject_resp.json['Manuscript State']['state'] == "REJECTED"
+
+    finally:
+        # Clean up
+        TEST_CLIENT.delete(f'/manuscript/delete/{manuscript_id}')
+        TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{referee["email"]}')
+        TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{editor["email"]}')
+
+def test_remove_referee():
+    """Test removing a referee from a manuscript."""
+    # First create a manuscript
+    manuscript_resp = TEST_CLIENT.put('/manuscript/create', json=TEST_MANUSCRIPT)
+    assert manuscript_resp.status_code == OK
+    manuscript_id = manuscript_resp.json['manuscript']['_id']
+
+    # Create a referee user
+    referee = {
+        "name": "Test Referee",
+        "email": "referee@test.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+        "roleCodes": ["RE"]
+    }
+    TEST_CLIENT.put(ep.USERS_EP, json=referee)
+
+    # Create an editor user
+    editor = {
+        "name": "Test Editor",
+        "email": "editor@test.com",
+        "password": "pass",
+        "affiliation": "Test Uni",
+        "roleCodes": ["ED"]
+    }
+    TEST_CLIENT.put(ep.USERS_EP, json=editor)
+
+    try:
+        # Assign referee (as editor)
+        TEST_CLIENT.put(
+            f'/manuscript/referee/{manuscript_id}',
+            json={
+                "referee_email": referee["email"]
+            },
+            headers={"X-User-Email": editor["email"]}
+        )
+
+        # Remove referee
+        resp = TEST_CLIENT.delete(
+            f'/manuscript/referee/{manuscript_id}?referee_email={referee["email"]}'
+        )
+        assert resp.status_code == OK
+        assert resp.json['Manuscript Referee']['referee_email'] is None
+
+    finally:
+        # Clean up
+        TEST_CLIENT.delete(f'/manuscript/delete/{manuscript_id}')
+        TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{referee["email"]}')
+        TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{editor["email"]}')
 
     

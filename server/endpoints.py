@@ -200,8 +200,10 @@ class UserUpdate(Resource):
             name = request.json.get(usr.NAME)
             affiliation = request.json.get(usr.AFFILIATION)
             roles = request.json.get(usr.ROLES, [])
+            roleCodes = request.json.get('roleCodes', None)
             testing = current_app.config.get(TESTING, False)
-            ret = usr.update(name, email, affiliation, roles, testing=testing)
+            ret = usr.update(name, email, affiliation, roles,
+                             testing=testing, roleCodes=roleCodes)
             return {USER_UPDATE_RESP: 'Updated Successfully', RETURN: ret}
         except Exception as err:
             handle_request_error('update user', err)
@@ -625,8 +627,7 @@ MANUSCRIPT_REFEREE_EP = '/manuscript/referee'
 MANUSCRIPT_REFEREE_RESP = 'Manuscript Referee'
 
 STATE_FIELDS = api.model('StateFields', {
-    'state': fields.String,
-    'actor_email': fields.String,
+    'state': fields.String
 })
 
 TEXT_UPDATE_FIELDS = api.model('TextUpdateFields', {
@@ -637,7 +638,7 @@ TEXT_UPDATE_FIELDS = api.model('TextUpdateFields', {
 })
 
 REFEREE_FIELDS = api.model('RefereeFields', {
-    'referee_email': fields.String,
+    'referee_email': fields.String
 })
 
 
@@ -668,6 +669,7 @@ class ManuscriptState(Resource):
     """
     @api.response(HTTPStatus.OK, 'Success')
     @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    @api.response(HTTPStatus.FORBIDDEN, 'Forbidden')
     @api.expect(STATE_FIELDS)
     def put(self, manuscript_id):
         """
@@ -675,11 +677,21 @@ class ManuscriptState(Resource):
         """
         try:
             new_state = request.json.get('state')
-            actor_email = request.json.get('actor_email')
+            # Get actor email from header
+            actor_email = request.headers.get('X-User-Email')
+            print(f"Debug - Actor email from header: {actor_email}")
+            print(f"Debug - New state: {new_state}")
+            # Get manuscript to see the current referee
+            manuscript = ms.get_manuscript(manuscript_id)
+            print(f"Debug - Current ref: {manuscript.get('referee_email')}")
             manuscript = ms.update_state(manuscript_id, new_state, actor_email)
-            if not manuscript:
-                raise wz.NotFound('State update failed.')
+            print(f"Debug - Manuscript after state update: {manuscript}")
+            if 'error' in manuscript:
+                print(f"Debug - Error: {manuscript['error']}")
+                raise wz.Forbidden(manuscript['error'])
             return {MANUSCRIPT_STATE_RESP: manuscript}
+        except wz.Forbidden as e:
+            return {'error': str(e)}, HTTPStatus.FORBIDDEN
         except Exception as e:
             handle_request_error('update manuscript state', e)
 
@@ -691,17 +703,29 @@ class ManuscriptReferee(Resource):
     """
     @api.response(HTTPStatus.OK, 'Success')
     @api.response(HTTPStatus.NOT_FOUND, 'Not Found')
+    @api.response(HTTPStatus.FORBIDDEN, 'Only editors can assign referees')
     @api.expect(REFEREE_FIELDS)
     def put(self, manuscript_id):
         """
-        Assign a referee to manuscript.
+        Assign a referee to manuscript. Only editors can assign referees.
         """
         try:
             referee_email = request.json.get('referee_email')
+            # Get editor email from header
+            editor_email = request.headers.get('X-User-Email')
+            print(f"Debug - Editor email from header: {editor_email}")
+            # Verify editor role
+            editor = usr.read_one(editor_email)
+            print(f"Debug - Editor details: {editor}")
+            if not editor or "ED" not in editor.get("roleCodes", []):
+                raise wz.Forbidden("Only editors can assign referees")
             manuscript = ms.assign_referee(manuscript_id, referee_email)
+            print(f"Debug - Manuscript after referee assignment: {manuscript}")
             if not manuscript:
                 raise wz.NotFound('Referee assignment failed.')
             return {MANUSCRIPT_REFEREE_RESP: manuscript}
+        except wz.Forbidden as e:
+            return {'error': str(e)}, HTTPStatus.FORBIDDEN
         except Exception as e:
             handle_request_error('assign referee', e)
 

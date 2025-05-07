@@ -110,7 +110,8 @@ def update(
         email: str,
         affiliation: str,
         roles: list = None,
-        testing=False):
+        testing=False,
+        roleCodes: list = None):
     """
     Update an existing user in MongoDB.
     Email serves as the unique identifier and cannot be changed.
@@ -136,7 +137,11 @@ def update(
             update_doc[ROLES] = existing[ROLES]
         else:
             update_doc[ROLES] = []
-
+        # Add roleCodes if provided
+        if roleCodes is not None:
+            update_doc['roleCodes'] = roleCodes
+        elif 'roleCodes' in existing:
+            update_doc['roleCodes'] = existing['roleCodes']
         return bool(dbc.update_doc(collection, {EMAIL: email}, update_doc))
     except Exception as e:
         print(f"Error in update: {str(e)}")

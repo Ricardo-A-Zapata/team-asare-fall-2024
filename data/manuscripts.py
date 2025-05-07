@@ -32,23 +32,22 @@ MAX_TITLE_LENGTH = 200
 MIN_ABSTRACT_LENGTH = 0
 MAX_ABSTRACT_LENGTH = 5000
 
+# Constants for manuscript states
 STATE_SUBMITTED = 'SUBMITTED'
-STATE_REFEREE_REVIEW = 'REFEREE_REVIEW'
+STATE_ACCEPTED = 'ACCEPTED'
 STATE_REJECTED = 'REJECTED'
-STATE_AUTHOR_REVISIONS = 'AUTHOR_REVISIONS'
-STATE_EDITOR_REVIEW = 'EDITOR_REVIEW'
 STATE_COPY_EDIT = 'COPY_EDIT'
 STATE_AUTHOR_REVIEW = 'AUTHOR_REVIEW'
 STATE_FORMATTING = 'FORMATTING'
 STATE_PUBLISHED = 'PUBLISHED'
 STATE_WITHDRAWN = 'WITHDRAWN'
+STATE_REFEREE_REVIEW = 'REFEREE_REVIEW'
+STATE_EDITOR_REVIEW = 'EDITOR_REVIEW'
 
 VALID_STATES = {
     STATE_SUBMITTED,
-    STATE_REFEREE_REVIEW,
+    STATE_ACCEPTED,
     STATE_REJECTED,
-    STATE_AUTHOR_REVISIONS,
-    STATE_EDITOR_REVIEW,
     STATE_COPY_EDIT,
     STATE_AUTHOR_REVIEW,
     STATE_FORMATTING,
@@ -57,7 +56,6 @@ VALID_STATES = {
 }
 
 VERDICT_ACCEPT = 'ACCEPT'
-VERDICT_ACCEPT_WITH_REVISIONS = 'ACCEPT_W_REV'
 VERDICT_REJECT = 'REJECT'
 
 MANUSCRIPTS_COLLECTION = 'manuscripts'
@@ -146,6 +144,7 @@ def create_manuscript(
                 }
             ],
             EDITOR_EMAIL: None,
+            "referee_email": None  # Add referee_email field
         }
 
         result = dbc.insert_one(collection, manuscript)
@@ -185,6 +184,18 @@ def update_state(
     if not manuscript:
         return {"error": "Manuscript not found"}
 
+    # Verify referee is making the decision
+    if new_state in [STATE_ACCEPTED, STATE_REJECTED]:
+        if manuscript.get("referee_email") != actor_email:
+            return {"error": "Only assigned ref can accept/deny"}
+
+        # Update referee's verdict in REFEREES dict
+        verdict = VERDICT_ACCEPT if (
+            new_state == STATE_ACCEPTED) else VERDICT_REJECT
+        referees = manuscript.get(REFEREES, {})
+        if actor_email in referees:
+            referees[actor_email][VERDICT] = verdict
+
     current_state = manuscript[STATE]
     if not validate_state_transition(current_state, new_state):
         return {
@@ -203,6 +214,10 @@ def update_state(
         STATE: new_state,
         HISTORY: manuscript.get(HISTORY, []) + [history_entry]
     }
+
+    # Add referee verdict update if applicable
+    if new_state in [STATE_ACCEPTED, STATE_REJECTED]:
+        update_fields[REFEREES] = referees
 
     dbc.update_doc(
         MANUSCRIPTS_COLLECTION,
@@ -368,14 +383,14 @@ def accept_manuscript(
         manuscript_id: str, actor_email: str) -> Optional[dict]:
     """
     Accept manuscript, moving it to the next state based on current state.
-    If in AUTHOR_REVISIONS or REFEREE_REVIEW, move to COPY_EDIT.
+    If in AUTHOR_REVIEW or REFEREE_REVIEW, move to COPY_EDIT.
     If in EDITOR_REVIEW, move to PUBLISHED.
     """
     manuscript = get_manuscript(manuscript_id)
     if not manuscript:
         return None
     current_state = manuscript[STATE]
-    if (current_state == STATE_AUTHOR_REVISIONS or
+    if (current_state == STATE_AUTHOR_REVIEW or
             current_state == STATE_REFEREE_REVIEW):
         return update_state(manuscript_id, STATE_COPY_EDIT, actor_email)
     elif current_state == STATE_EDITOR_REVIEW:
@@ -388,9 +403,9 @@ def accept_with_revisions(
     manuscript_id: str, actor_email: str
 ) -> Optional[dict]:
     """
-    Move manuscript to AUTHOR_REVISIONS after review.
+    Move manuscript to AUTHOR_REVIEW after review.
     """
-    return update_state(manuscript_id, STATE_AUTHOR_REVISIONS, actor_email)
+    return update_state(manuscript_id, STATE_AUTHOR_REVIEW, actor_email)
 
 
 def save_manuscript(manuscript: dict) -> None:
@@ -410,9 +425,7 @@ def add_referee_report(
     """
     Adds a referee report and updates manuscript state accordingly.
     """
-    if verdict not in [VERDICT_ACCEPT,
-                       VERDICT_ACCEPT_WITH_REVISIONS,
-                       VERDICT_REJECT]:
+    if verdict not in [VERDICT_ACCEPT, VERDICT_REJECT]:
         return {"error": f"Invalid verdict: {verdict}"}
 
     try:
@@ -424,28 +437,31 @@ def add_referee_report(
         if referee_email not in referees:
             return {"error": "Referee not assigned to this manuscript"}
 
+        # Update referee's report and verdict
         referees[referee_email] = {REPORT: report, VERDICT: verdict}
 
-        next_state = manuscript[STATE]
-        if verdict == VERDICT_ACCEPT_WITH_REVISIONS:
-            next_state = STATE_AUTHOR_REVISIONS
-        elif verdict == VERDICT_REJECT:
-            next_state = STATE_REJECTED
+        # Determine next state based on verdict
+        next_state = STATE_EDITOR_REVIEW if (
+            verdict == VERDICT_ACCEPT) else STATE_REJECTED
 
-        manuscript[STATE] = next_state
-        manuscript[HISTORY].append({
+        # Add history entry
+        history_entry = {
             "state": next_state,
             "timestamp": datetime.now().isoformat(),
             "actor": referee_email,
-            "action": "submit_review"
-        })
+            "action": "submit_review",
+            "verdict": verdict
+        }
 
+        # Update manuscript
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
             {"_id": ObjectId(manuscript_id)},
-            {"$set": {STATE: next_state,
-                      HISTORY: manuscript[HISTORY],
-                      REFEREES: referees}}
+            {"$set": {
+                STATE: next_state,
+                HISTORY: manuscript[HISTORY] + [history_entry],
+                REFEREES: referees
+            }}
         )
         return get_manuscript(manuscript_id, testing=testing)
     except Exception as e:
@@ -462,19 +478,16 @@ def assign_referee(manuscript_id: str, referee_email: str) -> Optional[dict]:
         if not manuscript:
             return {"error": "Manuscript not found"}
 
-        referee = dbc.fetch_one("users", {"email": referee_email})
-        if not referee or "RE" not in referee.get("roleCodes", []):
-            return {"error": "Referee not found or does not have the RE role"}
-
-        updated_referees = manuscript.get(REFEREES, {})
-        if referee_email in updated_referees:
-            return {"error": "Referee already assigned"}
-
-        updated_referees[referee_email] = {}
+        # Update manuscript with referee email and add to REFEREES dict
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
             {"_id": ObjectId(manuscript_id)},
-            {"$set": {REFEREES: updated_referees}}
+            {
+                "$set": {
+                    "referee_email": referee_email,
+                    REFEREES: {referee_email: {REPORT: "", VERDICT: ""}}
+                }
+            }
         )
         return get_manuscript(manuscript_id)
     except Exception as e:
@@ -499,6 +512,10 @@ def remove_referee(
         if referee_email in referees:
             del referees[referee_email]
         manuscript[REFEREES] = referees
+
+        # Clear the top-level referee_email field if it matches
+        if manuscript.get('referee_email') == referee_email:
+            manuscript['referee_email'] = None
 
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
@@ -549,12 +566,12 @@ def validate_state_transition(current_state: str, new_state: str) -> bool:
     Validate if a state transition is allowed according to the FSM.
     """
     valid_transitions = {
-        STATE_SUBMITTED: {STATE_AUTHOR_REVISIONS, STATE_REJECTED},
-        STATE_AUTHOR_REVISIONS: {STATE_COPY_EDIT},
+        # Referee can accept or reject
+        STATE_SUBMITTED: {STATE_ACCEPTED, STATE_REJECTED},
+        STATE_ACCEPTED: {STATE_COPY_EDIT},
         STATE_COPY_EDIT: {STATE_AUTHOR_REVIEW},
         STATE_AUTHOR_REVIEW: {STATE_FORMATTING},
         STATE_FORMATTING: {STATE_PUBLISHED},
-        STATE_EDITOR_REVIEW: {STATE_COPY_EDIT},
         STATE_REJECTED: {},
         STATE_WITHDRAWN: {},
     }
@@ -578,7 +595,7 @@ def update_manuscript_text(
         if not manuscript:
             return {"error": "Manuscript not found"}
         current_state = manuscript[STATE]
-        if current_state not in [STATE_AUTHOR_REVISIONS, STATE_SUBMITTED]:
+        if current_state != STATE_SUBMITTED:
             return {
                 "error": f"Cannot update manuscript in state: {current_state}"
             }
