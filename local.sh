@@ -3,7 +3,6 @@
 export FLASK_ENV=development
 export PROJ_DIR=$PWD
 export DEBUG=1
-# Running MongoDB in the Cloud
 
 # run our server locally:
 PYTHONPATH=$(pwd):$PYTHONPATH
