@@ -640,6 +640,7 @@ def update_manuscript_text(
             return {"error": "Manuscript not found"}
         current_state = manuscript[STATE]
         if current_state != STATE_SUBMITTED:
+        if current_state != STATE_SUBMITTED and current_state != STATE_AUTHOR_REVISIONS:
             return {
                 "error": f"Cannot update manuscript in state: {current_state}"
             }
