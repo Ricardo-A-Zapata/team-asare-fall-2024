@@ -1,4 +1,3 @@
-
 """
 A utility for filling in a form in a notebook or
 from the command line.
@@ -109,7 +108,7 @@ def form(fld_descrips):
         if OPT in fld:
             opt = '(OPTIONAL) '
         if DEFAULT in fld:
-            dflt = f'(DEFAULT: {fld["default"]}) '
+            dflt = f'(DEFAULT: {fld.get("default")}) '
         # no question means don't ask the user:
         if QSTN in fld:
             fld_vals[fld[FLD_NM]] = get_input(dflt, opt, fld[QSTN])
@@ -120,7 +119,7 @@ def form(fld_descrips):
             fld_vals[fld[FLD_NM]] = ''
         # See if we should fill in default val:
         if DEFAULT in fld and not fld_vals[fld[FLD_NM]]:
-            fld_vals[fld[FLD_NM]] = fld["default"]
+            fld_vals[fld[FLD_NM]] = fld.get("default")
     return fld_vals
 
 

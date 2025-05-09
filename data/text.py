@@ -9,6 +9,9 @@ TITLE = 'title'
 TEXT = 'text'
 EMAIL = 'email'
 
+ERROR_KEY = 'error'
+MONGO_ID_KEY = '_id'
+
 TEST_KEY = 'HomePage'
 SUBM_KEY = 'SubmissionsPage'
 DEL_KEY = 'DeletePage'
@@ -96,9 +99,9 @@ def read(testing=False):
         for text in all_texts:
             if dbc.MONGO_ID in text:
                 del text[dbc.MONGO_ID]
-            texts[text[KEY]] = {
-                TITLE: text[TITLE],
-                TEXT: text[TEXT]
+            texts[text.get(KEY)] = {
+                TITLE: text.get(TITLE),
+                TEXT: text.get(TEXT)
             }
         return texts
     except Exception as e:
@@ -117,7 +120,7 @@ def read_one(key: str, testing=False) -> dict:
         if text:
             if dbc.MONGO_ID in text:
                 del text[dbc.MONGO_ID]
-            return {TITLE: text[TITLE], TEXT: text[TEXT]}
+            return {TITLE: text.get(TITLE), TEXT: text.get(TEXT)}
         return {}
     except Exception as e:
         print(f"Error in read_one: {str(e)}")
@@ -146,8 +149,8 @@ def init_db():
         if not dbc.fetch_one(TEXT_COLLECTION, {KEY: key}):
             text_doc = {
                 KEY: key,
-                TITLE: content[TITLE],
-                TEXT: content[TEXT]
+                TITLE: content.get(TITLE),
+                TEXT: content.get(TEXT)
             }
             dbc.insert_one(TEXT_COLLECTION, text_doc)
 

@@ -8,6 +8,11 @@ AUTHOR_CODE = 'AU'
 EDITOR_CODE = 'ED'
 REFEREE_CODE = 'RE'
 ROLES_COLLECTION = 'roles'
+USERS_COLLECTION = 'users'
+ERROR_KEY = "error"
+CODE_KEY = "code"
+ROLE_KEY = "role"
+ROLE_CODES_KEY = "roleCodes"
 ROLES = {
     AUTHOR_CODE: 'Author',
     EDITOR_CODE: 'Editor',
@@ -24,7 +29,7 @@ def get_roles(testing=False) -> dict:
     try:
         all_roles = dbc.fetch_all(ROLES_COLLECTION, testing=testing)
         for role in all_roles:
-            roles[role["code"]] = role["role"]
+            roles[role.get(CODE_KEY)] = role.get(ROLE_KEY)
         return roles
     except Exception as e:
         print(f"Error in get_roles: {str(e)}")
@@ -36,12 +41,12 @@ def create(code: str, role: str, testing=False):
     Create a new role in MongoDB, with safeguards for test roles.
     """
     try:
-        if dbc.fetch_one(ROLES_COLLECTION, {"code": code}, testing=testing):
+        if dbc.fetch_one(ROLES_COLLECTION, {CODE_KEY: code}, testing=testing):
             raise ValueError(f"Role with code '{code}' already exists.")
 
         dbc.insert_one(ROLES_COLLECTION, {
-            "code": code,
-            "role": role
+            CODE_KEY: code,
+            ROLE_KEY: role
             }, testing=testing)
         return True
     except Exception as e:
@@ -75,8 +80,12 @@ def read_one(code: str, testing=False) -> str:
     Read a specific role by its code from MongoDB.
     """
     try:
-        role = dbc.fetch_one(ROLES_COLLECTION, {"code": code}, testing=testing)
-        return role["role"] if role else None
+        role = dbc.fetch_one(
+            ROLES_COLLECTION,
+            {CODE_KEY: code},
+            testing=testing
+            )
+        return role.get(ROLE_KEY) if role else None
     except Exception as e:
         print(f"Error in read_one: {str(e)}")
         return None
@@ -90,7 +99,7 @@ def update(code: str, new_role: str, testing=False) -> bool:
         if not read_one(code, testing=testing):
             raise ValueError(f"Role with code '{code}' does not exist.")
         return bool(dbc.update_doc(
-            ROLES_COLLECTION, {"code": code}, {"role": new_role},
+            ROLES_COLLECTION, {CODE_KEY: code}, {ROLE_KEY: new_role},
             testing=testing))
     except Exception as e:
         print(f"Error in update: {str(e)}")
@@ -105,17 +114,17 @@ def delete(code: str, testing=False) -> dict:
     try:
 
         role = dbc.fetch_one(ROLES_COLLECTION, {
-            "code": code}, testing=testing)
+            CODE_KEY: code}, testing=testing)
         if not role:
             return None
 
         # Delete the role from the roles collection
-        dbc.del_one(ROLES_COLLECTION, {"code": code}, testing=testing)
+        dbc.del_one(ROLES_COLLECTION, {CODE_KEY: code}, testing=testing)
 
         # Remove the role code from all users
-        dbc.client[dbc.JOURNAL_DB]['users'].update_many(
-            {"roleCodes": code},
-            {"$pull": {"roleCodes": code}}
+        dbc.client[dbc.JOURNAL_DB][USERS_COLLECTION].update_many(
+            {ROLE_CODES_KEY: code},
+            {"$pull": {ROLE_CODES_KEY: code}}
         )
 
         return role
@@ -145,7 +154,7 @@ def is_valid(code: str, testing=False) -> bool:
     Check if a role with the given code exists in MongoDB.
     """
     try:
-        return (dbc.fetch_one(ROLES_COLLECTION, {"code": code},
+        return (dbc.fetch_one(ROLES_COLLECTION, {CODE_KEY: code},
                               testing=testing) is not None)
     except Exception as e:
         print(f"Error in is_valid: {str(e)}")

@@ -26,6 +26,13 @@ REFEREE_COMMENTS = 'referee_comments'
 AUTHOR_RESPONSE = 'author_response'
 TIMESTAMP = 'timestamp'
 
+ID_KEY = '_id'
+ERROR_KEY = 'error'
+STATE_KEY = 'state'
+ACTOR_KEY = 'actor'
+ACTION_KEY = 'action'
+TEXT_UPDATE_ACTION = 'text_update'
+
 # Constants for validation
 MIN_TITLE_LENGTH = 1
 MAX_TITLE_LENGTH = 200
@@ -218,7 +225,7 @@ def create_manuscript(
         }
 
         result = dbc.insert_one(collection, manuscript)
-        manuscript["_id"] = str(result.inserted_id)
+        manuscript[ID_KEY] = str(result.inserted_id)
         return manuscript
 
     except Exception as e:
@@ -233,15 +240,15 @@ def get_manuscript(manuscript_id: str, testing=False) -> Optional[dict]:
     try:
         manuscript = dbc.fetch_one(
             get_collection_name(testing),
-            {"_id": ObjectId(manuscript_id)},
+            {ID_KEY: ObjectId(manuscript_id)},
             testing=testing
         )
         if manuscript:
-            manuscript['_id'] = str(manuscript['_id'])
+            manuscript[ID_KEY] = str(manuscript.get(ID_KEY))
         return manuscript
     except Exception as e:
         print(f"Error fetching manuscript: {e}")
-        return {"error": f"Invalid manuscript ID or not found: {str(e)}"}
+        return {ERROR_KEY: f"Invalid manuscript ID or not found: {str(e)}"}
 
 
 def process_manuscript_action(manuscript_id, action, actor_email=None,
@@ -262,7 +269,7 @@ def process_manuscript_action(manuscript_id, action, actor_email=None,
     """
     manuscript = get_manuscript(manuscript_id)
     if not manuscript:
-        return {"error": "Manuscript not found"}
+        return {ERROR_KEY: "Manuscript not found"}
     current_state = manuscript[STATE]
     next_state = MANUSCRIPT_FLOW_MAP.get(current_state, {}).get(action)
 
@@ -276,7 +283,7 @@ def process_manuscript_action(manuscript_id, action, actor_email=None,
         elif verdict == ACTION_ACCEPT_WITH_REVISIONS:
             next_state = STATE_AUTHOR_REVISIONS
         else:
-            return {"error": "Invalid verdict for review submission."}
+            return {ERROR_KEY: "Invalid verdict for review submission."}
         # Update referee's report and verdict
         referee_email = kwargs.get('referee_email')
         report = kwargs.get('report', '')
@@ -296,7 +303,7 @@ def process_manuscript_action(manuscript_id, action, actor_email=None,
         }
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
+            {ID_KEY: ObjectId(manuscript_id)},
             {"$set": update_fields}
         )
         return get_manuscript(manuscript_id)
@@ -322,7 +329,7 @@ def process_manuscript_action(manuscript_id, action, actor_email=None,
         }
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
+            {ID_KEY: ObjectId(manuscript_id)},
             {"$set": update_fields}
         )
         return get_manuscript(manuscript_id)
@@ -343,14 +350,14 @@ def process_manuscript_action(manuscript_id, action, actor_email=None,
         }
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
+            {ID_KEY: ObjectId(manuscript_id)},
             {"$set": update_fields}
         )
         return get_manuscript(manuscript_id)
     elif action == ACTION_EDITOR_MOVE:
         target_state = kwargs.get('target_state')
         if target_state not in MANUSCRIPT_FLOW_MAP:
-            return {"error": "Invalid target state for editor move."}
+            return {ERROR_KEY: "Invalid target state for editor move."}
         update_fields = {
             STATE: target_state,
             HISTORY: manuscript.get(HISTORY, []) + [{
@@ -362,7 +369,7 @@ def process_manuscript_action(manuscript_id, action, actor_email=None,
         }
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
+            {ID_KEY: ObjectId(manuscript_id)},
             {"$set": update_fields}
         )
         return get_manuscript(manuscript_id)
@@ -378,14 +385,14 @@ def process_manuscript_action(manuscript_id, action, actor_email=None,
         }
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
+            {ID_KEY: ObjectId(manuscript_id)},
             {"$set": update_fields}
         )
         return get_manuscript(manuscript_id)
     # Standard transitions
     if next_state is None:
         return {
-            "error": f"Action {action} not allowed from state {current_state}"
+            ERROR_KEY: f"Action {action} not allowed"
         }
     update_fields = {
         STATE: next_state,
@@ -398,7 +405,7 @@ def process_manuscript_action(manuscript_id, action, actor_email=None,
     }
     dbc.update_doc(
         MANUSCRIPTS_COLLECTION,
-        {"_id": ObjectId(manuscript_id)},
+        {ID_KEY: ObjectId(manuscript_id)},
         {"$set": update_fields}
     )
     return get_manuscript(manuscript_id)
@@ -409,7 +416,7 @@ def assign_editor(manuscript_id: str, editor_email: str) -> Optional[dict]:
     try:
         dbc.update_doc(
             MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
+            {ID_KEY: ObjectId(manuscript_id)},
             {"$set": {EDITOR_EMAIL: editor_email}}
         )
         return get_manuscript(manuscript_id)
@@ -446,8 +453,8 @@ def get_referee_verdict(manuscript_id: str) -> Optional[str]:
     returns referee's verdict message.
     """
     manuscript = get_manuscript(manuscript_id)
-    if manuscript and "verdict" in manuscript:
-        return manuscript["verdict"]
+    if manuscript and VERDICT in manuscript:
+        return manuscript.get(VERDICT)
     return None
 
 
@@ -469,9 +476,9 @@ def get_all_manuscripts(testing=False) -> Dict:
         collection = get_collection_name(testing)
         all_manuscripts = dbc.fetch_all(collection)
         for manuscript in all_manuscripts:
-            if '_id' in manuscript:
-                manuscript['_id'] = str(manuscript['_id'])
-            manuscripts[manuscript['_id']] = manuscript
+            if ID_KEY in manuscript:
+                manuscript[ID_KEY] = str(manuscript.get(ID_KEY))
+            manuscripts[manuscript.get(ID_KEY)] = manuscript
         return manuscripts
     except Exception as e:
         print(f"Error fetching all manuscripts: {e}")
@@ -488,14 +495,14 @@ def delete_manuscript(manuscript_id: str, testing=False) -> Optional[dict]:
         manuscript = get_manuscript(manuscript_id, testing=testing)
 
         if not manuscript:
-            return {"error": "Manuscript not found"}
+            return {ERROR_KEY: "Manuscript not found"}
 
         if manuscript.get(STATE) == STATE_PUBLISHED:
-            return {"error": "Cannot delete a published manuscript"}
+            return {ERROR_KEY: "Cannot delete a published manuscript"}
 
         dbc.del_one(
             MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
+            {ID_KEY: ObjectId(manuscript_id)},
             db=dbc.JOURNAL_DB,
             testing=testing
         )
@@ -503,7 +510,7 @@ def delete_manuscript(manuscript_id: str, testing=False) -> Optional[dict]:
 
     except Exception as e:
         print(f"Error deleting manuscript: {e}")
-        return {"error": f"Invalid manuscript ID or not found: {str(e)}"}
+        return {ERROR_KEY: f"Invalid manuscript ID or not found: {str(e)}"}
 
 
 def accept_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
@@ -653,11 +660,11 @@ def update_manuscript_text(
         manuscript[VERSION] = new_version
         manuscript[REVISIONS] = manuscript.get(REVISIONS, []) + [new_revision]
         manuscript[HISTORY].append({
-            "state": current_state,
-            "timestamp": timestamp,
-            "actor": author_email,
-            "action": "text_update",
-            "version": new_version
+            STATE_KEY: current_state,
+            TIMESTAMP: timestamp,
+            ACTOR_KEY: author_email,
+            ACTION_KEY: TEXT_UPDATE_ACTION,
+            VERSION: new_version
         })
         _id = manuscript.pop('_id')
         dbc.update_doc(
@@ -731,25 +738,22 @@ def get_manuscripts_by_state(state: str, testing=False) -> Dict:
     Raises:
         ValueError: If the provided state is not valid
     """
+    manuscripts = {}
     try:
         if state not in VALID_STATES:
             raise ValueError(f"Invalid state. Must be one of: {VALID_STATES}")
 
         collection = get_collection_name(testing)
-        manuscripts = list(dbc.fetch_all(collection, {STATE: state}))
+        all_manuscripts = dbc.fetch_all(collection, {STATE: state})
 
-        # Convert ObjectId to string for each manuscript
-        for manuscript in manuscripts:
-            manuscript['_id'] = str(manuscript['_id'])
-
-        return {
-            'manuscripts': manuscripts,
-            'count': len(manuscripts)
-        }
-
+        for manuscript in all_manuscripts:
+            if ID_KEY in manuscript:
+                manuscript[ID_KEY] = str(manuscript.get(ID_KEY))
+            manuscripts[manuscript.get(ID_KEY)] = manuscript
+        return manuscripts
     except Exception as e:
         print(f"Error fetching manuscripts by state: {e}")
-        return {'manuscripts': [], 'count': 0, 'error': str(e)}
+        return {}
 
 
 def update_state(

@@ -7,6 +7,7 @@ CLOUD = "1"
 
 JOURNAL_DB = 'teamasare'
 
+ERROR_KEY = 'error'
 
 client = None
 
@@ -125,7 +126,7 @@ def fetch_all_as_dict(key, collection, db=JOURNAL_DB, remove_id=True):
         for doc in client[db][collection].find():
             if remove_id and MONGO_ID in doc:
                 del doc[MONGO_ID]
-            ret[doc[key]] = doc
+            ret[doc.get(key)] = doc
     except Exception as e:
         print(f"Error fetching all documents as dict: {e}")
     return ret

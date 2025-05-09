@@ -16,6 +16,16 @@ import data.text as txt
 import data.roles as rls
 import data.manuscripts as ms
 
+ROLE_EDITOR = "ED"
+ROLE_REFEREE = "RE"
+ROLE_AUTHOR = "AU"
+TEST_EMAIL_EDITOR = "editor@test.com"
+TEST_EMAIL_REFEREE = "referee@test.com"
+ERROR_KEY = "error"
+SUCCESS_MESSAGE = "success"
+STATE_KEY = "state"
+REFEREE_EMAIL_KEY = "referee_email"
+
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
@@ -250,7 +260,7 @@ class UserDelete(Resource):
         try:
             testing = current_app.config.get(TESTING, False)
             ret = usr.delete(email, testing=testing)
-            return {USER_DELETE_RESP: 'success', RETURN: ret}
+            return {USER_DELETE_RESP: SUCCESS_MESSAGE, RETURN: ret}
         except Exception as err:
             handle_request_error('delete user', err, wz.NotFound)
 
@@ -496,8 +506,8 @@ class RoleCreate(Resource):
         Create a role.
         """
         try:
-            code = request.json['code']
-            role = request.json['role']
+            code = request.json.get('code')
+            role = request.json.get('role')
             ret = rls.create(code, role)
             if not ret:
                 raise wz.NotAcceptable('Role creation failed.')
@@ -529,8 +539,8 @@ class RoleUpdate(Resource):
         Update a role by its role code.
         """
         try:
-            code = request.json['code']
-            role = request.json['role']
+            code = request.json.get('code')
+            role = request.json.get('role')
             ret = rls.update(code, role)
             if not ret:
                 raise wz.NotAcceptable('Role update failed.')
@@ -696,14 +706,14 @@ class ManuscriptState(Resource):
                     manuscript_id, action, actor_email=actor_email)
 
                 # Check if test needs state adjustment
-                is_test = actor_email == 'referee@test.com'
+                is_test = actor_email == TEST_EMAIL_REFEREE
                 state_in_manuscript = updated_manuscript.get('state')
                 is_copy_edit = state_in_manuscript == ms.STATE_COPY_EDIT
                 if is_test and is_copy_edit:
-                    updated_manuscript['state'] = ms.STATE_ACCEPTED
+                    updated_manuscript[STATE_KEY] = ms.STATE_ACCEPTED
 
-                if 'error' in updated_manuscript:
-                    raise wz.Forbidden(updated_manuscript['error'])
+                if ERROR_KEY in updated_manuscript:
+                    raise wz.Forbidden(updated_manuscript.get(ERROR_KEY))
 
                 return {MANUSCRIPT_STATE_RESP: updated_manuscript}
 
@@ -732,10 +742,9 @@ class ManuscriptState(Resource):
             if not action:
                 # Check if actor is an editor
                 user = usr.read_one(actor_email)
-                if not user or "ED" not in user.get("roleCodes", []):
+                if not user or ROLE_EDITOR not in user.get("roleCodes", []):
                     raise wz.Forbidden(
                         "Only editors can forcefully change manuscript state")
-
                 # Use editor move
                 updated_manuscript = ms.editor_move(
                     manuscript_id, requested_state, actor_email)
@@ -743,10 +752,8 @@ class ManuscriptState(Resource):
                 # Use the appropriate action
                 updated_manuscript = ms.process_manuscript_action(
                     manuscript_id, action, actor_email=actor_email)
-
-            if 'error' in updated_manuscript:
-                raise wz.Forbidden(updated_manuscript['error'])
-
+            if ERROR_KEY in updated_manuscript:
+                raise wz.Forbidden(updated_manuscript.get(ERROR_KEY))
             return {MANUSCRIPT_STATE_RESP: updated_manuscript}
         except wz.Forbidden as e:
             return {'error': str(e)}, HTTPStatus.FORBIDDEN
@@ -777,7 +784,7 @@ class ManuscriptReferee(Resource):
             # Verify editor role
             editor = usr.read_one(editor_email)
             print(f"Debug - Editor details: {editor}")
-            if not editor or "ED" not in editor.get("roleCodes", []):
+            if not editor or ROLE_EDITOR not in editor.get("roleCodes", []):
                 raise wz.Forbidden("Only editors can assign referees")
 
             manuscript = ms.assign_referee(
@@ -788,7 +795,7 @@ class ManuscriptReferee(Resource):
                 raise wz.NotFound('Referee assignment failed.')
 
             # Set referee_email to match test expectations
-            manuscript['referee_email'] = referee_email
+            manuscript[REFEREE_EMAIL_KEY] = referee_email
 
             return {MANUSCRIPT_REFEREE_RESP: manuscript}
         except wz.Forbidden as e:
@@ -810,13 +817,13 @@ class ManuscriptReferee(Resource):
 
             # If no editor email provided, use a default for testing
             if not editor_email:
-                editor_email = "editor@test.com"
+                editor_email = TEST_EMAIL_EDITOR
 
             # Verify editor role
             editor = usr.read_one(editor_email)
-            if not editor or "ED" not in editor.get("roleCodes", []):
+            if not editor or ROLE_EDITOR not in editor.get("roleCodes", []):
                 raise wz.Forbidden(
-                    "Only editors can remove referees from manuscripts")
+                    'Only editors can remove referees from manuscripts')
 
             manuscript = ms.remove_referee(
                 manuscript_id,
@@ -828,7 +835,7 @@ class ManuscriptReferee(Resource):
                 raise wz.NotFound('Referee removal failed.')
 
             # Ensure referee_email is None to match test expectation
-            manuscript['referee_email'] = None
+            manuscript[REFEREE_EMAIL_KEY] = None
 
             return {
                 MANUSCRIPT_REFEREE_RESP: manuscript,
@@ -902,8 +909,8 @@ class ManuscriptReview(Resource):
                 verdict
             )
 
-            if 'error' in updated_manuscript:
-                raise wz.Forbidden(updated_manuscript['error'])
+            if ERROR_KEY in updated_manuscript:
+                raise wz.Forbidden(updated_manuscript.get(ERROR_KEY))
 
             return {'Manuscript Review': updated_manuscript}
         except wz.Forbidden as e:
@@ -944,8 +951,8 @@ class ManuscriptWithdraw(Resource):
             updated_manuscript = ms.author_withdraw(
                 manuscript_id, author_email)
 
-            if 'error' in updated_manuscript:
-                raise wz.Forbidden(updated_manuscript['error'])
+            if ERROR_KEY in updated_manuscript:
+                raise wz.Forbidden(updated_manuscript.get(ERROR_KEY))
 
             return {'Manuscript': updated_manuscript}
         except wz.Forbidden as e:
@@ -975,7 +982,7 @@ class ManuscriptEditorMove(Resource):
 
             # Verify this is an editor
             editor = usr.read_one(editor_email)
-            if not editor or "ED" not in editor.get("roleCodes", []):
+            if not editor or ROLE_EDITOR not in editor.get("roleCodes", []):
                 raise wz.Forbidden(
                     'Only editors can forcefully change manuscript state')
 
@@ -987,8 +994,8 @@ class ManuscriptEditorMove(Resource):
             updated_manuscript = ms.editor_move(
                 manuscript_id, target_state, editor_email)
 
-            if 'error' in updated_manuscript:
-                raise wz.Forbidden(updated_manuscript['error'])
+            if ERROR_KEY in updated_manuscript:
+                raise wz.Forbidden(updated_manuscript.get(ERROR_KEY))
 
             return {'Manuscript': updated_manuscript}
         except wz.Forbidden as e:
@@ -1026,7 +1033,7 @@ class ManuscriptComplete(Resource):
             if current_state == ms.STATE_COPY_EDIT:
                 # Only editors can complete copy editing
                 user = usr.read_one(actor_email)
-                if not user or "ED" not in user.get("roleCodes", []):
+                if not user or ROLE_EDITOR not in user.get("roleCodes", []):
                     raise wz.Forbidden(
                         'Only editors can complete the copy edit stage')
                 updated_manuscript = ms.complete_copy_edit(
@@ -1041,7 +1048,7 @@ class ManuscriptComplete(Resource):
             elif current_state == ms.STATE_FORMATTING:
                 # Only editors can complete formatting
                 user = usr.read_one(actor_email)
-                if not user or "ED" not in user.get("roleCodes", []):
+                if not user or ROLE_EDITOR not in user.get("roleCodes", []):
                     raise wz.Forbidden(
                         'Only editors can complete the formatting stage')
                 updated_manuscript = ms.complete_formatting(
@@ -1058,8 +1065,8 @@ class ManuscriptComplete(Resource):
                 raise wz.NotAcceptable(
                     f'Cannot complete the current stage: {c_state}')
 
-            if 'error' in updated_manuscript:
-                raise wz.Forbidden(updated_manuscript['error'])
+            if ERROR_KEY in updated_manuscript:
+                raise wz.Forbidden(updated_manuscript.get(ERROR_KEY))
 
             return {'Manuscript': updated_manuscript}
         except wz.Forbidden as e:
@@ -1147,8 +1154,8 @@ class ManuscriptDelete(Resource):
 
             deleted = ms.delete_manuscript(manuscript_id, testing=testing)
 
-            if "error" in deleted:
-                raise wz.NotFound(deleted["error"])
+            if ERROR_KEY in deleted:
+                raise wz.NotFound(deleted.get(ERROR_KEY))
 
             return {'message': 'Manuscript deleted successfully',
                     'deleted_manuscript': deleted}

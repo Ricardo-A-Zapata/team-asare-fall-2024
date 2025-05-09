@@ -13,6 +13,10 @@ PASSWORD = 'password'
 AFFILIATION = 'affiliation'
 TEST_EMAIL = 'ejc369@nyu.edu'
 
+MONGO_ID_KEY = '_id'
+ERROR_KEY = 'error'
+ROLE_CODES_KEY = 'roleCodes'
+
 USERS_COLLECTION = 'users'
 
 MIN_USER_NAME_LEN = 2
@@ -82,7 +86,7 @@ def read(testing=False):
         for user in all_users:
             if dbc.MONGO_ID in user:
                 del user[dbc.MONGO_ID]
-            users[user[EMAIL]] = user
+            users[user.get(EMAIL)] = user
         return users
     except Exception as e:
         print(f"Error in read: {str(e)}")
@@ -134,14 +138,14 @@ def update(
         if roles is not None:
             update_doc[ROLES] = roles
         elif ROLES in existing:
-            update_doc[ROLES] = existing[ROLES]
+            update_doc[ROLES] = existing.get(ROLES, [])
         else:
             update_doc[ROLES] = []
         # Add roleCodes if provided
         if roleCodes is not None:
-            update_doc['roleCodes'] = roleCodes
-        elif 'roleCodes' in existing:
-            update_doc['roleCodes'] = existing['roleCodes']
+            update_doc[ROLE_CODES_KEY] = roleCodes
+        elif ROLE_CODES_KEY in existing:
+            update_doc[ROLE_CODES_KEY] = existing.get(ROLE_CODES_KEY, [])
         return bool(dbc.update_doc(collection, {EMAIL: email}, update_doc))
     except Exception as e:
         print(f"Error in update: {str(e)}")
@@ -199,11 +203,11 @@ def get_masthead():
         users_with_role = []
         all_users = read()
         for user in all_users.values():
-            if ROLES in user and role_code in user[ROLES]:
+            if ROLES in user and role_code in user.get(ROLES, []):
                 users_with_role.append({
-                    NAME: user[NAME],
-                    AFFILIATION: user[AFFILIATION],
-                    EMAIL: user[EMAIL]
+                    NAME: user.get(NAME, ''),
+                    AFFILIATION: user.get(AFFILIATION, ''),
+                    EMAIL: user.get(EMAIL, '')
                 })
         masthead[role_text] = users_with_role
     return masthead
@@ -211,7 +215,7 @@ def get_masthead():
 
 def has_role(user: dict, role: str) -> bool:
     """Check if a user has a specific role"""
-    if ROLES in user and role in user[ROLES]:
+    if ROLES in user and role in user.get(ROLES, []):
         return True
     return False
 
@@ -238,7 +242,7 @@ def add_role(email: str, role: str, testing=False) -> bool:
         if ROLES not in user:
             user[ROLES] = []
 
-        if role not in user[ROLES]:
+        if role not in user.get(ROLES, []):
             user[ROLES].append(role)
             return bool(dbc.update_doc(collection, {EMAIL: email}, user))
         return True
@@ -252,7 +256,7 @@ def login(email: str, password: str) -> bool:
         user = read_one(email)
         if not user:
             raise KeyError(f'User with email "{email}" not found')
-        return user[PASSWORD] == password
+        return user.get(PASSWORD) == password
     except Exception as e:
         print(f"Error in login: {str(e)}")
         raise e
@@ -270,10 +274,12 @@ def remove_role(email: str, role: str, testing=False) -> bool:
         if not user:
             raise KeyError(f'User with email "{email}" not found')
 
-        if ROLES not in user or role not in user[ROLES]:
+        if ROLES not in user or role not in user.get(ROLES, []):
             raise ValueError(f'Role "{role}" not found for user {email}')
 
-        user[ROLES].remove(role)
+        user_roles = user.get(ROLES, [])
+        user_roles.remove(role)
+        user[ROLES] = user_roles
         return bool(dbc.update_doc(collection, {EMAIL: email}, user))
     except Exception as e:
         print(f"Error in remove_role: {str(e)}")
