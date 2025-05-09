@@ -43,6 +43,18 @@ STATE_PUBLISHED = 'PUBLISHED'
 STATE_WITHDRAWN = 'WITHDRAWN'
 STATE_REFEREE_REVIEW = 'REFEREE_REVIEW'
 STATE_EDITOR_REVIEW = 'EDITOR_REVIEW'
+STATE_AUTHOR_REVISIONS = 'AUTHOR_REVISIONS'
+
+# Action constants for the FSM
+ACTION_ASSIGN_REFEREE = 'ASSIGN_REFEREE'
+ACTION_REMOVE_REFEREE = 'REMOVE_REFEREE'
+ACTION_SUBMIT_REVIEW = 'SUBMIT_REVIEW'
+ACTION_ACCEPT = 'ACCEPT'
+ACTION_ACCEPT_WITH_REVISIONS = 'ACCEPT_WITH_REVISIONS'
+ACTION_REJECT = 'REJECT'
+ACTION_DONE = 'DONE'
+ACTION_WITHDRAW = 'WITHDRAW'
+ACTION_EDITOR_MOVE = 'EDITOR_MOVE'
 
 VALID_STATES = {
     STATE_SUBMITTED,
@@ -52,13 +64,71 @@ VALID_STATES = {
     STATE_AUTHOR_REVIEW,
     STATE_FORMATTING,
     STATE_PUBLISHED,
-    STATE_WITHDRAWN
+    STATE_WITHDRAWN,
+    STATE_REFEREE_REVIEW,
+    STATE_EDITOR_REVIEW,
+    STATE_AUTHOR_REVISIONS
 }
 
 VERDICT_ACCEPT = 'ACCEPT'
 VERDICT_REJECT = 'REJECT'
 
 MANUSCRIPTS_COLLECTION = 'manuscripts'
+
+# Manuscript workflow state machine based on the FSM diagram
+MANUSCRIPT_FLOW_MAP = {
+    STATE_SUBMITTED: {
+        ACTION_ASSIGN_REFEREE: STATE_REFEREE_REVIEW,
+        ACTION_REJECT: STATE_REJECTED,
+        ACTION_WITHDRAW: STATE_WITHDRAWN,
+        ACTION_EDITOR_MOVE: None,
+    },
+    STATE_REFEREE_REVIEW: {
+        ACTION_ASSIGN_REFEREE: STATE_REFEREE_REVIEW,
+        ACTION_REMOVE_REFEREE: STATE_REFEREE_REVIEW,
+        ACTION_SUBMIT_REVIEW: None,
+        ACTION_ACCEPT: STATE_COPY_EDIT,
+        ACTION_ACCEPT_WITH_REVISIONS: STATE_AUTHOR_REVISIONS,
+        ACTION_REJECT: STATE_REJECTED,
+        ACTION_WITHDRAW: STATE_WITHDRAWN,
+        ACTION_EDITOR_MOVE: None,
+    },
+    STATE_AUTHOR_REVISIONS: {
+        ACTION_DONE: STATE_EDITOR_REVIEW,
+        ACTION_WITHDRAW: STATE_WITHDRAWN,
+        ACTION_EDITOR_MOVE: None,
+    },
+    STATE_EDITOR_REVIEW: {
+        ACTION_ACCEPT: STATE_COPY_EDIT,
+        ACTION_WITHDRAW: STATE_WITHDRAWN,
+        ACTION_EDITOR_MOVE: None,
+    },
+    STATE_COPY_EDIT: {
+        ACTION_DONE: STATE_AUTHOR_REVIEW,
+        ACTION_WITHDRAW: STATE_WITHDRAWN,
+        ACTION_EDITOR_MOVE: None,
+    },
+    STATE_AUTHOR_REVIEW: {
+        ACTION_DONE: STATE_FORMATTING,
+        ACTION_WITHDRAW: STATE_WITHDRAWN,
+        ACTION_EDITOR_MOVE: None,
+    },
+    STATE_FORMATTING: {
+        ACTION_DONE: STATE_PUBLISHED,
+        ACTION_WITHDRAW: STATE_WITHDRAWN,
+        ACTION_EDITOR_MOVE: None,
+    },
+    STATE_PUBLISHED: {
+        ACTION_WITHDRAW: STATE_WITHDRAWN,
+        ACTION_EDITOR_MOVE: None,
+    },
+    STATE_REJECTED: {
+        ACTION_EDITOR_MOVE: None,
+    },
+    STATE_WITHDRAWN: {
+        ACTION_EDITOR_MOVE: None,
+    },
+}
 
 dbc.connect_db()  # connect to MongoDB
 
@@ -144,7 +214,7 @@ def create_manuscript(
                 }
             ],
             EDITOR_EMAIL: None,
-            "referee_email": None  # Add referee_email field
+            "referee_email": None
         }
 
         result = dbc.insert_one(collection, manuscript)
@@ -174,57 +244,163 @@ def get_manuscript(manuscript_id: str, testing=False) -> Optional[dict]:
         return {"error": f"Invalid manuscript ID or not found: {str(e)}"}
 
 
-def update_state(
-    manuscript_id: str,
-    new_state: str,
-    actor_email: str
-) -> Optional[dict]:
-    """Update the state of a manuscript and record in history."""
+def process_manuscript_action(manuscript_id, action, actor_email=None,
+                              **kwargs):
+    """Central function for processing manuscript state transitions.
+
+    This function implements the finite state machine (FSM) that controls
+    the manuscript workflow.
+
+    Args:
+        manuscript_id: The ID of the manuscript
+        action: The action to perform (must be one of the ACTION_* constants)
+        actor_email: Email of the person performing the action
+        **kwargs: Additional parameters needed for specific actions
+
+    Returns:
+        The updated manuscript or an error dict
+    """
     manuscript = get_manuscript(manuscript_id)
     if not manuscript:
         return {"error": "Manuscript not found"}
-
-    # Verify referee is making the decision
-    if new_state in [STATE_ACCEPTED, STATE_REJECTED]:
-        if manuscript.get("referee_email") != actor_email:
-            return {"error": "Only assigned ref can accept/deny"}
-
-        # Update referee's verdict in REFEREES dict
-        verdict = VERDICT_ACCEPT if (
-            new_state == STATE_ACCEPTED) else VERDICT_REJECT
-        referees = manuscript.get(REFEREES, {})
-        if actor_email in referees:
-            referees[actor_email][VERDICT] = verdict
-
     current_state = manuscript[STATE]
-    if not validate_state_transition(current_state, new_state):
-        return {
-            "error": (
-                f"Invalid state transition from {current_state} to {new_state}"
-            )
+    next_state = MANUSCRIPT_FLOW_MAP.get(current_state, {}).get(action)
+
+    # Special handling for actions that require logic
+    if action == ACTION_SUBMIT_REVIEW:
+        verdict = kwargs.get('verdict')
+        if verdict == VERDICT_ACCEPT:
+            next_state = STATE_COPY_EDIT
+        elif verdict == VERDICT_REJECT:
+            next_state = STATE_REJECTED
+        elif verdict == ACTION_ACCEPT_WITH_REVISIONS:
+            next_state = STATE_AUTHOR_REVISIONS
+        else:
+            return {"error": "Invalid verdict for review submission."}
+        # Update referee's report and verdict
+        referee_email = kwargs.get('referee_email')
+        report = kwargs.get('report', '')
+        referees = manuscript.get(REFEREES, {})
+        if referee_email:
+            referees[referee_email] = {REPORT: report, VERDICT: verdict}
+        update_fields = {
+            STATE: next_state,
+            REFEREES: referees,
+            HISTORY: manuscript.get(HISTORY, []) + [{
+                "state": next_state,
+                "timestamp": datetime.now().isoformat(),
+                "actor": referee_email,
+                "action": action,
+                "verdict": verdict
+            }]
         }
-
-    history_entry = {
-        "state": new_state,
-        "timestamp": datetime.now().isoformat(),
-        "actor": actor_email
-    }
-
+        dbc.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            {"$set": update_fields}
+        )
+        return get_manuscript(manuscript_id)
+    elif action == ACTION_REMOVE_REFEREE:
+        referee_email = kwargs.get('referee_email')
+        referees = manuscript.get(REFEREES, {})
+        if referee_email in referees:
+            del referees[referee_email]
+        # If no referees left, return to SUBMITTED
+        if not referees:
+            next_state = STATE_SUBMITTED
+        else:
+            next_state = STATE_REFEREE_REVIEW
+        update_fields = {
+            STATE: next_state,
+            REFEREES: referees,
+            HISTORY: manuscript.get(HISTORY, []) + [{
+                "state": next_state,
+                "timestamp": datetime.now().isoformat(),
+                "actor": actor_email,
+                "action": action
+            }]
+        }
+        dbc.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            {"$set": update_fields}
+        )
+        return get_manuscript(manuscript_id)
+    elif action == ACTION_ASSIGN_REFEREE:
+        referee_email = kwargs.get('referee_email')
+        referees = manuscript.get(REFEREES, {})
+        if referee_email and referee_email not in referees:
+            referees[referee_email] = {REPORT: '', VERDICT: ''}
+        update_fields = {
+            STATE: STATE_REFEREE_REVIEW,
+            REFEREES: referees,
+            HISTORY: manuscript.get(HISTORY, []) + [{
+                "state": STATE_REFEREE_REVIEW,
+                "timestamp": datetime.now().isoformat(),
+                "actor": actor_email,
+                "action": action
+            }]
+        }
+        dbc.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            {"$set": update_fields}
+        )
+        return get_manuscript(manuscript_id)
+    elif action == ACTION_EDITOR_MOVE:
+        target_state = kwargs.get('target_state')
+        if target_state not in MANUSCRIPT_FLOW_MAP:
+            return {"error": "Invalid target state for editor move."}
+        update_fields = {
+            STATE: target_state,
+            HISTORY: manuscript.get(HISTORY, []) + [{
+                "state": target_state,
+                "timestamp": datetime.now().isoformat(),
+                "actor": actor_email,
+                "action": action
+            }]
+        }
+        dbc.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            {"$set": update_fields}
+        )
+        return get_manuscript(manuscript_id)
+    elif action == ACTION_WITHDRAW:
+        update_fields = {
+            STATE: STATE_WITHDRAWN,
+            HISTORY: manuscript.get(HISTORY, []) + [{
+                "state": STATE_WITHDRAWN,
+                "timestamp": datetime.now().isoformat(),
+                "actor": actor_email,
+                "action": action
+            }]
+        }
+        dbc.update_doc(
+            MANUSCRIPTS_COLLECTION,
+            {"_id": ObjectId(manuscript_id)},
+            {"$set": update_fields}
+        )
+        return get_manuscript(manuscript_id)
+    # Standard transitions
+    if next_state is None:
+        return {
+            "error": f"Action {action} not allowed from state {current_state}"
+        }
     update_fields = {
-        STATE: new_state,
-        HISTORY: manuscript.get(HISTORY, []) + [history_entry]
+        STATE: next_state,
+        HISTORY: manuscript.get(HISTORY, []) + [{
+            "state": next_state,
+            "timestamp": datetime.now().isoformat(),
+            "actor": actor_email,
+            "action": action
+        }]
     }
-
-    # Add referee verdict update if applicable
-    if new_state in [STATE_ACCEPTED, STATE_REJECTED]:
-        update_fields[REFEREES] = referees
-
     dbc.update_doc(
         MANUSCRIPTS_COLLECTION,
         {"_id": ObjectId(manuscript_id)},
-        update_fields
+        {"$set": update_fields}
     )
-
     return get_manuscript(manuscript_id)
 
 
@@ -248,67 +424,21 @@ def editor_move(
     editor_email: str
 ) -> Optional[dict]:
     """Allows an editor to forcefully move a manuscript to any state."""
-    history_entry = {
-        "state": target_state,
-        "timestamp": datetime.now().isoformat(),
-        "actor": editor_email,
-        "action": "editor_move"
-    }
-
-    try:
-        manuscript = dbc.fetch_one(
-            MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)}
-        )
-        if not manuscript:
-            return {"error": "Manuscript not found"}
-
-        dbc.update_doc(
-            MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
-            {"$set": {
-                STATE: target_state,
-                HISTORY: manuscript[HISTORY] + [history_entry]
-            }}
-        )
-        return get_manuscript(manuscript_id)
-    except Exception as e:
-        print(f"Error performing editor move: {e}")
-        return {"error": f"An error occurred: {str(e)}"}
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_EDITOR_MOVE,
+        actor_email=editor_email,
+        target_state=target_state
+    )
 
 
-def author_withdraw(
-    manuscript_id: str,
-    author_email: str
-) -> Optional[dict]:
+def author_withdraw(manuscript_id: str, author_email: str) -> Optional[dict]:
     """Allows the author to withdraw a manuscript from any state."""
-    history_entry = {
-        "state": STATE_WITHDRAWN,
-        "timestamp": datetime.now().isoformat(),
-        "actor": author_email,
-        "action": "withdraw"
-    }
-
-    try:
-        manuscript = dbc.fetch_one(
-            MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)}
-        )
-        if not manuscript:
-            return {"error": "Manuscript not found"}
-
-        dbc.update_doc(
-            MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
-            {"$set": {
-                STATE: STATE_WITHDRAWN,
-                HISTORY: manuscript[HISTORY] + [history_entry]
-            }}
-        )
-        return get_manuscript(manuscript_id)
-    except Exception as e:
-        print(f"Error withdrawing manuscript: {e}")
-        return {"error": f"An error occurred: {str(e)}"}
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_WITHDRAW,
+        actor_email=author_email
+    )
 
 
 def get_referee_verdict(manuscript_id: str) -> Optional[str]:
@@ -321,16 +451,13 @@ def get_referee_verdict(manuscript_id: str) -> Optional[str]:
     return None
 
 
-def reject_manuscript(
-        manuscript_id: str, actor_email: str) -> Optional[dict]:
-    """
-    rejects manuscript if referee's verdict is REJECT
-    """
-    verdict = get_referee_verdict(manuscript_id)
-    if verdict == VERDICT_REJECT:
-        return update_state(manuscript_id, STATE_REJECTED, actor_email)
-    else:
-        return {"error:", "No reject verdict"}
+def reject_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
+    """Rejects manuscript using the FSM action handler."""
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_REJECT,
+        actor_email=actor_email
+    )
 
 
 def get_all_manuscripts(testing=False) -> Dict:
@@ -379,33 +506,25 @@ def delete_manuscript(manuscript_id: str, testing=False) -> Optional[dict]:
         return {"error": f"Invalid manuscript ID or not found: {str(e)}"}
 
 
-def accept_manuscript(
-        manuscript_id: str, actor_email: str) -> Optional[dict]:
-    """
-    Accept manuscript, moving it to the next state based on current state.
-    If in AUTHOR_REVIEW or REFEREE_REVIEW, move to COPY_EDIT.
-    If in EDITOR_REVIEW, move to PUBLISHED.
-    """
-    manuscript = get_manuscript(manuscript_id)
-    if not manuscript:
-        return None
-    current_state = manuscript[STATE]
-    if (current_state == STATE_AUTHOR_REVIEW or
-            current_state == STATE_REFEREE_REVIEW):
-        return update_state(manuscript_id, STATE_COPY_EDIT, actor_email)
-    elif current_state == STATE_EDITOR_REVIEW:
-        return update_state(manuscript_id, STATE_PUBLISHED, actor_email)
-    else:
-        return None
+def accept_manuscript(manuscript_id: str, actor_email: str) -> Optional[dict]:
+    """Accept a manuscript using the FSM action handler."""
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_ACCEPT,
+        actor_email=actor_email
+    )
 
 
 def accept_with_revisions(
-    manuscript_id: str, actor_email: str
+    manuscript_id: str,
+    actor_email: str
 ) -> Optional[dict]:
-    """
-    Move manuscript to AUTHOR_REVIEW after review.
-    """
-    return update_state(manuscript_id, STATE_AUTHOR_REVIEW, actor_email)
+    """Accept a manuscript with revisions using the FSM action handler."""
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_ACCEPT_WITH_REVISIONS,
+        actor_email=actor_email
+    )
 
 
 def save_manuscript(manuscript: dict) -> None:
@@ -422,161 +541,79 @@ def add_referee_report(
     verdict: str,
     testing=False
 ) -> Optional[dict]:
-    """
-    Adds a referee report and updates manuscript state accordingly.
-    """
-    if verdict not in [VERDICT_ACCEPT, VERDICT_REJECT]:
-        return {"error": f"Invalid verdict: {verdict}"}
-
-    try:
-        manuscript = get_manuscript(manuscript_id, testing=testing)
-        if not manuscript:
-            return {"error": "Manuscript not found"}
-
-        referees = manuscript.get(REFEREES, {})
-        if referee_email not in referees:
-            return {"error": "Referee not assigned to this manuscript"}
-
-        # Update referee's report and verdict
-        referees[referee_email] = {REPORT: report, VERDICT: verdict}
-
-        # Determine next state based on verdict
-        next_state = STATE_EDITOR_REVIEW if (
-            verdict == VERDICT_ACCEPT) else STATE_REJECTED
-
-        # Add history entry
-        history_entry = {
-            "state": next_state,
-            "timestamp": datetime.now().isoformat(),
-            "actor": referee_email,
-            "action": "submit_review",
-            "verdict": verdict
-        }
-
-        # Update manuscript
-        dbc.update_doc(
-            MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
-            {"$set": {
-                STATE: next_state,
-                HISTORY: manuscript[HISTORY] + [history_entry],
-                REFEREES: referees
-            }}
-        )
-        return get_manuscript(manuscript_id, testing=testing)
-    except Exception as e:
-        print(f"Error updating referee report: {e}")
-        return {"error": f"An error occurred: {str(e)}"}
+    """Submit a referee review using the FSM action handler."""
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_SUBMIT_REVIEW,
+        actor_email=referee_email,
+        referee_email=referee_email,
+        report=report,
+        verdict=verdict
+    )
 
 
-def assign_referee(manuscript_id: str, referee_email: str) -> Optional[dict]:
-    """
-    Assign a referee to a manuscript
-    """
-    try:
-        manuscript = get_manuscript(manuscript_id)
-        if not manuscript:
-            return {"error": "Manuscript not found"}
-
-        # Update manuscript with referee email and add to REFEREES dict
-        dbc.update_doc(
-            MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id)},
-            {
-                "$set": {
-                    "referee_email": referee_email,
-                    REFEREES: {referee_email: {REPORT: "", VERDICT: ""}}
-                }
-            }
-        )
-        return get_manuscript(manuscript_id)
-    except Exception as e:
-        print(f"Error assigning referee: {e}")
-        return {"error": f"An error occurred: {str(e)}"}
+def assign_referee(
+    manuscript_id: str,
+    referee_email: str,
+    actor_email: str = None
+) -> Optional[dict]:
+    """Assign a referee to a manuscript using the FSM action handler."""
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_ASSIGN_REFEREE,
+        actor_email=actor_email or referee_email,
+        referee_email=referee_email
+    )
 
 
 def remove_referee(
-        manuscript_id: str, referee_email: str) -> Optional[dict]:
-    """
-    Remove a referee from a manuscript
-    """
-    try:
-        manuscript = get_manuscript(manuscript_id)
-        if not manuscript:
-            return None
-
-        manuscript_id_obj = manuscript['_id']
-        del manuscript['_id']
-
-        referees = manuscript.get(REFEREES, {})
-        if referee_email in referees:
-            del referees[referee_email]
-        manuscript[REFEREES] = referees
-
-        # Clear the top-level referee_email field if it matches
-        if manuscript.get('referee_email') == referee_email:
-            manuscript['referee_email'] = None
-
-        dbc.update_doc(
-            MANUSCRIPTS_COLLECTION,
-            {"_id": ObjectId(manuscript_id_obj)},
-            manuscript
-        )
-        return get_manuscript(manuscript_id)
-    except Exception as e:
-        print(f"Error removing referee: {e}")
-        return None
+    manuscript_id: str,
+    referee_email: str,
+    actor_email: str = None
+) -> Optional[dict]:
+    """Remove a referee from a manuscript using the FSM action handler."""
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_REMOVE_REFEREE,
+        actor_email=actor_email or referee_email,
+        referee_email=referee_email
+    )
 
 
 def submit_author_approval(
     manuscript_id: str,
     author_email: str
 ) -> Optional[dict]:
-    """Author approves changes and moves manuscript to formatting"""
-    manuscript = get_manuscript(manuscript_id)
-    if manuscript and manuscript[STATE] == STATE_AUTHOR_REVIEW:
-        return update_state(manuscript_id, STATE_FORMATTING, author_email)
-    return None
+    """Author approves changes and moves manuscript to formatting."""
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_DONE,
+        actor_email=author_email
+    )
 
 
 def complete_formatting(
     manuscript_id: str,
     editor_email: str
 ) -> Optional[dict]:
-    """Complete formatting and move to published state"""
-    manuscript = get_manuscript(manuscript_id)
-    if manuscript and manuscript[STATE] == STATE_FORMATTING:
-        return update_state(manuscript_id, STATE_PUBLISHED, editor_email)
-    return None
+    """Complete formatting and move to published state."""
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_DONE,
+        actor_email=editor_email
+    )
 
 
 def complete_copy_edit(
     manuscript_id: str,
     editor_email: str
 ) -> Optional[dict]:
-    """Complete copy editing and move to author review"""
-    manuscript = get_manuscript(manuscript_id)
-    if manuscript and manuscript[STATE] == STATE_COPY_EDIT:
-        return update_state(manuscript_id, STATE_AUTHOR_REVIEW, editor_email)
-    return None
-
-
-def validate_state_transition(current_state: str, new_state: str) -> bool:
-    """
-    Validate if a state transition is allowed according to the FSM.
-    """
-    valid_transitions = {
-        # Referee can accept or reject
-        STATE_SUBMITTED: {STATE_ACCEPTED, STATE_REJECTED},
-        STATE_ACCEPTED: {STATE_COPY_EDIT},
-        STATE_COPY_EDIT: {STATE_AUTHOR_REVIEW},
-        STATE_AUTHOR_REVIEW: {STATE_FORMATTING},
-        STATE_FORMATTING: {STATE_PUBLISHED},
-        STATE_REJECTED: {},
-        STATE_WITHDRAWN: {},
-    }
-
-    return new_state in valid_transitions.get(current_state, set())
+    """Complete copy editing and move to author review."""
+    return process_manuscript_action(
+        manuscript_id,
+        ACTION_DONE,
+        actor_email=editor_email
+    )
 
 
 def update_manuscript_text(
@@ -713,3 +750,24 @@ def get_manuscripts_by_state(state: str, testing=False) -> Dict:
     except Exception as e:
         print(f"Error fetching manuscripts by state: {e}")
         return {'manuscripts': [], 'count': 0, 'error': str(e)}
+
+
+def update_state(
+    manuscript_id: str,
+    state: str,
+    editor_email: str
+) -> Optional[dict]:
+    """
+    Update the state of a manuscript directly (for testing purposes).
+
+    Args:
+        manuscript_id: The ID of the manuscript
+        state: The new state to set
+        editor_email: The email of the editor making the change
+
+    Returns:
+        The updated manuscript or an error dict
+    """
+    if state not in VALID_STATES:
+        return {"error": f"Invalid state: {state}"}
+    return editor_move(manuscript_id, state, editor_email)

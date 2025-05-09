@@ -1,23 +1,19 @@
 from http.client import (
-    BAD_REQUEST,
     FORBIDDEN,
     NOT_ACCEPTABLE,
     NOT_FOUND,
     OK,
-    SERVICE_UNAVAILABLE,
 )
 
 from unittest.mock import patch
 
 import pytest
-import datetime
-from data.users import NAME
 import data.text as txt
 import data.db_connect as dbc
 import data.roles as rls
 import server.endpoints as ep
 import data.manuscripts as ms
-from http import HTTPStatus
+
 
 TEST_CLIENT = None
 
@@ -96,7 +92,7 @@ def test_update_users():
     resp = TEST_CLIENT.put(ep.USER_UPDATE_EP, json=test_update)
     assert resp.status_code == OK
     resp_json = resp.get_json()
-    assert resp_json['return'] == True
+    assert resp_json['return'] is True
     assert ep.USER_UPDATE_RESP in resp_json
 
     # Clean up
@@ -124,7 +120,6 @@ def test_read_users(mock_read):
 
 
 def test_delete():
-
     test = {
         "name": "Random Name",
         "email": "randomNametoTest@hotmail.com",
@@ -454,7 +449,7 @@ def test_read_all_texts():
 
 TEST_MANUSCRIPT = {
     "title": "Test Manuscript",
-    "author": "Test Author", 
+    "author": "Test Author",
     "author_email": "author@test.com",
     "text": "random ahhh text",
     "abstract": "Test abstract"
@@ -475,17 +470,19 @@ def test_get_all_manuscripts():
     TEST_CLIENT.delete(f'/manuscript/delete/{_id}')
     
 def test_create_invalid_manuscript():
-    #same data as above but no title, so it is invalid
+    # same data as above but no title, so it is invalid
     invalid_data = {**TEST_MANUSCRIPT, "title": ""}
     resp = TEST_CLIENT.put('/manuscript/create', json=invalid_data)
     assert resp.status_code == NOT_ACCEPTABLE
     assert "Title must be between" in resp.json['message']
+    
     # long abstract
-    invalid_data = {**TEST_MANUSCRIPT, 
-                   "abstract": "a" * (ms.MAX_ABSTRACT_LENGTH + 1)}
+    invalid_data = {**TEST_MANUSCRIPT,
+                    "abstract": "a" * (ms.MAX_ABSTRACT_LENGTH + 1)}
     resp = TEST_CLIENT.put('/manuscript/create', json=invalid_data)
     assert resp.status_code == NOT_ACCEPTABLE
-    assert "Abstract must be between 0 and 5000 characters" in resp.json['message']
+    msg = "Abstract must be between 0 and 5000 characters"
+    assert msg in resp.json['message']
 
 def test_create_manuscript_no_title():
     # Missing 'title' completely, not just empty
@@ -555,14 +552,21 @@ def test_login():
     ret = TEST_CLIENT.put(ep.USERS_EP, json=test)
     assert ret.status_code == OK
     # Correct Login
-    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password": test['password']})
+    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, 
+                          json={"email": test['email'], "password": test['password']})
     assert ret.status_code == OK
     assert ret.get_json()[ep.USER_LOGIN_RESP] == "Success"
     # Incorrect Login - Email
-    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":'WRONG@EMAIL.COM', "password":'TEST_PASSWORD'})
+    ret = TEST_CLIENT.post(
+        ep.USER_LOGIN_EP,
+        json={"email": 'WRONG@EMAIL.COM', "password": 'TEST_PASSWORD'}
+    )
     assert ret.status_code == NOT_ACCEPTABLE
     # Incorrect Login - Password
-    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json={"email":test['email'], "password": test['password']+"wrong"})
+    ret = TEST_CLIENT.post(
+        ep.USER_LOGIN_EP,
+        json={"email": test['email'], "password": test['password']+"wrong"}
+    )
     assert ret.status_code == NOT_ACCEPTABLE
     TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
 
@@ -575,20 +579,30 @@ def test_change_password():
     }
     ret = TEST_CLIENT.put(ep.USERS_EP, json=test)
     assert ret.status_code == OK
-    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json=
-                           {"email":'WRONG@EMAIL.COM', "password":'TEST_PASSWORD'})
+    ret = TEST_CLIENT.post(
+        ep.PASSWORD_UPDATE_EP, 
+        json={"email": 'WRONG@EMAIL.COM', "password": 'TEST_PASSWORD'}
+    )
     assert ret.status_code == NOT_ACCEPTABLE
-    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json=
-                           {"password":'TEST_PASSWORD'})
+    ret = TEST_CLIENT.post(
+        ep.PASSWORD_UPDATE_EP,
+        json={"password": 'TEST_PASSWORD'}
+    )
     assert ret.status_code == NOT_ACCEPTABLE
-    ret = TEST_CLIENT.post(ep.PASSWORD_UPDATE_EP, json=
-                           {"email":'test@user.com', "password":'TEST_PASSWORD'})
+    ret = TEST_CLIENT.post(
+        ep.PASSWORD_UPDATE_EP,
+        json={"email": 'test@user.com', "password": 'TEST_PASSWORD'}
+    )
     assert ret.status_code == OK
-    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json=
-                           {"email":test['email'], "password": test['password']})
+    ret = TEST_CLIENT.post(
+        ep.USER_LOGIN_EP,
+        json={"email": test['email'], "password": test['password']}
+    )
     assert ret.status_code == NOT_ACCEPTABLE
-    ret = TEST_CLIENT.post(ep.USER_LOGIN_EP, json=
-                           {"email":test['email'], "password":'TEST_PASSWORD'})
+    ret = TEST_CLIENT.post(
+        ep.USER_LOGIN_EP,
+        json={"email": test['email'], "password": 'TEST_PASSWORD'}
+    )
     assert ret.status_code == OK
     TEST_CLIENT.delete(f'{ep.USER_DELETE_EP}/{test["email"]}')
 
@@ -639,13 +653,10 @@ def test_assign_referee():
         # Test editor assigning referee
         resp = TEST_CLIENT.put(
             f'/manuscript/referee/{manuscript_id}',
-            json={
-                "referee_email": referee["email"]
-            },
+            json={"referee_email": referee["email"]},
             headers={"X-User-Email": editor["email"]}
         )
         assert resp.status_code == OK
-        print("DEBUG: Referee assignment response =", resp.json)
         assert resp.json['Manuscript Referee']['referee_email'] == referee["email"]
 
     finally:
@@ -701,9 +712,7 @@ def test_referee_accept_decision():
         # First assign the referee (as editor)
         assign_resp = TEST_CLIENT.put(
             f'/manuscript/referee/{manuscript_id}',
-            json={
-                "referee_email": referee["email"]
-            },
+            json={"referee_email": referee["email"]},
             headers={"X-User-Email": editor["email"]}
         )
         assert assign_resp.status_code == OK
@@ -711,9 +720,7 @@ def test_referee_accept_decision():
         # Test referee accepting manuscript
         accept_resp = TEST_CLIENT.put(
             f'/manuscript/state/{manuscript_id}',
-            json={
-                "state": "ACCEPTED"
-            },
+            json={"state": "ACCEPTED"},
             headers={"X-User-Email": referee["email"]}
         )
         assert accept_resp.status_code == OK
@@ -772,9 +779,7 @@ def test_referee_reject_decision():
         # First assign the referee (as editor)
         assign_resp = TEST_CLIENT.put(
             f'/manuscript/referee/{manuscript_id}',
-            json={
-                "referee_email": referee["email"]
-            },
+            json={"referee_email": referee["email"]},
             headers={"X-User-Email": editor["email"]}
         )
         assert assign_resp.status_code == OK
@@ -782,9 +787,7 @@ def test_referee_reject_decision():
         # Test referee rejecting manuscript
         reject_resp = TEST_CLIENT.put(
             f'/manuscript/state/{manuscript_id}',
-            json={
-                "state": "REJECTED"
-            },
+            json={"state": "REJECTED"},
             headers={"X-User-Email": referee["email"]}
         )
         assert reject_resp.status_code == OK
@@ -827,18 +830,17 @@ def test_remove_referee():
         # Assign referee (as editor)
         TEST_CLIENT.put(
             f'/manuscript/referee/{manuscript_id}',
-            json={
-                "referee_email": referee["email"]
-            },
+            json={"referee_email": referee["email"]},
             headers={"X-User-Email": editor["email"]}
         )
 
         # Remove referee
         resp = TEST_CLIENT.delete(
-            f'/manuscript/referee/{manuscript_id}?referee_email={referee["email"]}'
+            f'/manuscript/referee/{manuscript_id}?referee_email={referee["email"]}',
+            headers={"X-User-Email": editor["email"]}
         )
         assert resp.status_code == OK
-        assert resp.json['Manuscript Referee']['referee_email'] is None
+        assert "Referee removed" in resp.json["message"]
 
     finally:
         # Clean up
